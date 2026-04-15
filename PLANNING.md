@@ -10,7 +10,7 @@
 - [x] Basic evaluation metrics
 
 ## Phase 2 — Reliability
-- [ ] Chunking strategy v2: overlap + token-based fallback chunking
+- [x] Chunking strategy v2: overlap + token-based fallback chunking
 - [ ] Reranking module (cross-encoder)
 - [ ] Structured extraction: dataset name extractor
 - [ ] Structured extraction: sample size extractor
