@@ -7,6 +7,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **PDF Parsing**: Extract structured text and metadata from scientific papers
 - **Section-Aware Chunking**: Split papers into meaningful chunks with section metadata
 - **Embedding-Based Retrieval**: Find relevant passages using FAISS vector search
+- **Cross-Encoder Reranking**: Reorder retrieved passages with a higher-precision reranker
 - **Grounded Generation**: Answer questions with citations from the paper
 
 ## Quick Start
