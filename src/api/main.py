@@ -1,20 +1,22 @@
 """FastAPI Application for Reliable Scientific Paper Copilot."""
 
-from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import tempfile
 import os
+import json
 import uuid
 from pathlib import Path
 import time
 
-from ..parsing import parse_pdf, save_parsed, load_parsed
-from ..chunking import chunk_by_sections, save_chunks, load_chunks
+from ..parsing import parse_pdf, save_parsed
+from ..chunking import chunk_by_sections, save_chunks
 from ..retrieval import Retriever, create_retriever
-from ..answering import AnswerGenerator, SimpleAnswerGenerator
-from ..utils import RequestLogger
+from ..answering import SimpleAnswerGenerator
+from ..storage import PaperRegistry
+from ..utils import RequestLogger, compute_file_hash
 from .web import WEB_UI_HTML
 
 
@@ -24,10 +26,10 @@ app = FastAPI(
     version="0.1.0"
 )
 
-# In-memory storage for uploaded papers
-# In production, use a proper database
+# In-memory cache backed by a persistent registry.
 PAPERS: Dict[str, Dict[str, Any]] = {}
 REQUEST_LOGGER = RequestLogger()
+PAPER_REGISTRY = PaperRegistry()
 
 
 class QuestionRequest(BaseModel):
@@ -56,10 +58,21 @@ async def web_ui():
     return HTMLResponse(WEB_UI_HTML)
 
 
+def _hydrate_paper_cache(paper: Dict[str, Any]) -> Dict[str, Any]:
+    cached = dict(paper)
+    cached.setdefault("retriever", None)
+    PAPERS[paper["paper_id"]] = cached
+    return cached
+
+
+for _paper in PAPER_REGISTRY.list_papers():
+    _hydrate_paper_cache(_paper)
+
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""
-    return {"status": "healthy", "version": "0.1.0"}
+    return {"status": "healthy", "version": "0.1.0", "papers": len(PAPERS)}
 
 
 @app.post("/upload", response_model=PaperStatus)
@@ -74,7 +87,7 @@ async def upload_paper(file: UploadFile = File(...)):
     
     # Generate paper ID
     paper_id = str(uuid.uuid4())
-    
+
     # Save uploaded file temporarily
     with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp:
         content = await file.read()
@@ -82,51 +95,64 @@ async def upload_paper(file: UploadFile = File(...)):
         tmp_path = tmp.name
     
     try:
+        raw_dir = Path("data/raw")
+        raw_dir.mkdir(parents=True, exist_ok=True)
+        raw_pdf_path = raw_dir / f"{paper_id}.pdf"
+        raw_pdf_path.write_bytes(content)
+
         # Parse PDF
         parsed = parse_pdf(tmp_path)
         parsed["paper_id"] = paper_id
-        
+
         # Save parsed data
         data_dir = Path("data/parsed")
         data_dir.mkdir(parents=True, exist_ok=True)
         parsed_path = data_dir / f"{paper_id}_parsed.json"
         save_parsed(parsed, str(parsed_path))
-        
+
         # Chunk by sections
         chunks = chunk_by_sections(parsed)
-        
+
         # Save chunks
         chunks_dir = Path("data/chunks")
         chunks_dir.mkdir(parents=True, exist_ok=True)
         chunks_path = chunks_dir / f"{paper_id}_chunks.json"
         save_chunks(chunks, str(chunks_path))
-        
+
         # Build retrieval index
         retriever = create_retriever(chunks)
-        
-        # Save index
+
+        # Save index when available
         index_dir = Path("data/indexes")
         index_dir.mkdir(parents=True, exist_ok=True)
         index_path = index_dir / f"{paper_id}_index.faiss"
-        retriever.save(str(index_path), str(chunks_path))
-        
-        # Store in memory
-        PAPERS[paper_id] = {
+        if retriever.index is not None and not retriever.use_lexical_fallback:
+            retriever.save(str(index_path), str(chunks_path))
+
+        created_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        record = {
             "paper_id": paper_id,
             "title": parsed["metadata"].get("title", "Unknown"),
+            "original_filename": file.filename,
             "status": "ready",
             "parsed_path": str(parsed_path),
             "chunks_path": str(chunks_path),
             "index_path": str(index_path),
+            "raw_pdf_path": str(raw_pdf_path),
             "num_chunks": len(chunks),
-            "retriever": retriever
+            "page_count": parsed["metadata"].get("page_count", 0),
+            "file_hash": compute_file_hash(str(raw_pdf_path)),
+            "created_at": created_at,
         }
-        
+        PAPER_REGISTRY.upsert_paper(record)
+        cached = _hydrate_paper_cache(record)
+        cached["retriever"] = retriever
+
         return PaperStatus(
             paper_id=paper_id,
-            title=parsed["metadata"].get("title"),
-            status="ready",
-            num_chunks=len(chunks)
+            title=record["title"],
+            status=record["status"],
+            num_chunks=record["num_chunks"],
         )
         
     except Exception as e:
@@ -141,9 +167,11 @@ async def ask_question(request: QuestionRequest):
     Ask a question about an uploaded paper.
     """
     paper = PAPERS.get(request.paper_id)
-    
     if paper is None:
-        raise HTTPException(status_code=404, detail="Paper not found. Upload first.")
+        registry_record = PAPER_REGISTRY.get_paper(request.paper_id)
+        if registry_record is None:
+            raise HTTPException(status_code=404, detail="Paper not found. Upload first.")
+        paper = _hydrate_paper_cache(registry_record)
     
     if paper.get("status") != "ready":
         raise HTTPException(status_code=400, detail="Paper not ready for queries.")
@@ -151,9 +179,17 @@ async def ask_question(request: QuestionRequest):
     # Get or create retriever
     retriever = paper.get("retriever")
     if retriever is None:
-        # Load from disk
         retriever = Retriever()
-        retriever.load(paper["index_path"], paper["chunks_path"])
+        if Path(paper["index_path"]).exists():
+            retriever.load(paper["index_path"], paper["chunks_path"])
+        else:
+            chunks_payload = Path(paper["chunks_path"])
+            if not chunks_payload.exists():
+                raise HTTPException(status_code=500, detail="Paper artifacts are missing on disk.")
+            with chunks_payload.open("r", encoding="utf-8") as handle:
+                saved_chunks = json.load(handle).get("chunks", [])
+            retriever.build_index(saved_chunks)
+        paper["retriever"] = retriever
     
     # Create answer generator (using mock for now - replace with real LLM)
     generator = SimpleAnswerGenerator(retriever)
@@ -193,7 +229,10 @@ async def get_paper_status(paper_id: str):
     """Get status of an uploaded paper."""
     paper = PAPERS.get(paper_id)
     if paper is None:
-        raise HTTPException(status_code=404, detail="Paper not found")
+        registry_record = PAPER_REGISTRY.get_paper(paper_id)
+        if registry_record is None:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        paper = _hydrate_paper_cache(registry_record)
     
     return PaperStatus(
         paper_id=paper_id,
@@ -206,12 +245,25 @@ async def get_paper_status(paper_id: str):
 @app.get("/papers")
 async def list_papers():
     """List all uploaded papers."""
+    papers = PAPER_REGISTRY.list_papers()
+    for paper in papers:
+        if paper["paper_id"] not in PAPERS:
+            _hydrate_paper_cache(paper)
+
     return {
         "papers": [
-            {"paper_id": pid, "title": p.get("title"), "status": p.get("status")}
-            for pid, p in PAPERS.items()
+            {
+                "paper_id": paper["paper_id"],
+                "title": paper.get("title"),
+                "status": paper.get("status"),
+                "num_chunks": paper.get("num_chunks", 0),
+                "original_filename": paper.get("original_filename"),
+                "page_count": paper.get("page_count", 0),
+                "created_at": paper.get("created_at"),
+            }
+            for paper in papers
         ],
-        "total": len(PAPERS)
+        "total": len(papers)
     }
 
 
