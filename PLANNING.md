@@ -15,7 +15,7 @@
 - [x] Structured extraction: dataset name extractor
 - [x] Structured extraction: sample size extractor
 - [x] Structured extraction: limitations extractor
-- [ ] Structured extraction: inclusion/exclusion criteria extractor
+- [x] Structured extraction: inclusion/exclusion criteria extractor
 - [ ] Confidence estimation: retrieval fallback when no good match
 - [ ] Logging module: per-request latency, token usage, model version
 - [ ] Eval set expansion (30-50 QA pairs)
