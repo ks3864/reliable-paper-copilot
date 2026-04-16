@@ -18,6 +18,16 @@ pip install -r requirements.txt
 python -m src.api.main
 ```
 
+## Docker
+
+Build and run the API with Docker Compose:
+
+```bash
+docker compose up --build
+```
+
+The API will be available at `http://localhost:8000`, and local `./data` is mounted into the container at `/app/data` so uploaded papers and indexes persist across restarts.
+
 ## API Endpoints
 
 - `POST /upload` - Upload and process a PDF

@@ -30,8 +30,9 @@
 - [x] Regression testing: compare chunking v1 vs v2 on eval set
   - [x] Sub-task 1: add a regression comparison utility and CLI for comparing two experiment result payloads
   - [x] Sub-task 2: add chunking-v1 and chunking-v2 experiment configs and generate comparable runs on the eval set
-- [ ] Docker setup
+- [x] Docker setup
   - [x] Sub-task 1: add a minimal Dockerfile and .dockerignore for running the FastAPI app
+  - [x] Sub-task 2: add a compose file and README instructions for running the FastAPI app with a persistent data volume
 - [ ] README with architecture diagram
 - [ ] Web UI (optional lightweight frontend)
 
