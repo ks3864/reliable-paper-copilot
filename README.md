@@ -11,6 +11,41 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **Grounded Generation**: Answer questions with citations from the paper
 - **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
 
+## Architecture
+
+```mermaid
+flowchart TD
+    A[Scientific paper PDF] --> B[PDF parser\nsrc/parsing/pdf_parser.py]
+    B --> C[Structured paper JSON\ndata/parsed]
+    C --> D[Section-aware chunker\nsrc/chunking/chunker.py]
+    D --> E[Chunk store\ndata/chunks]
+    E --> F[Embedding retriever\nsrc/retrieval/retriever.py]
+    F --> G[Cross-encoder reranker\nsrc/retrieval/reranker.py]
+    G --> H[Confidence estimation\nsrc/answering/confidence.py]
+    H --> I[Answer generator\nsrc/answering/answer_generator.py]
+    I --> J[Grounded answer with citations]
+
+    C --> K[Structured extractors\nsrc/extraction/*]
+    K --> L[Datasets, sample sizes, limitations, criteria]
+
+    M[FastAPI app\nsrc/api/main.py] --> B
+    M --> F
+    M --> I
+
+    N[Evaluation runner\nscripts/run_evaluation.py] --> F
+    N --> G
+    N --> H
+    N --> I
+    N --> O[Metrics + judge\nsrc/evaluation/*]
+```
+
+### Component notes
+
+- **Ingestion path**: uploaded PDFs are parsed into structured JSON, then chunked and persisted for retrieval.
+- **Retrieval path**: vector retrieval narrows the candidate set, reranking improves relevance, and confidence estimation decides whether the evidence is good enough to answer.
+- **Extraction path**: targeted extractors pull fields like datasets, sample sizes, limitations, and inclusion or exclusion criteria directly from the parsed paper.
+- **Evaluation path**: experiment configs, regression comparison, and answer-quality judging make it possible to compare pipeline variants reliably.
+
 ## Quick Start
 
 ```bash

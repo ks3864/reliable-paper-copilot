@@ -33,7 +33,7 @@
 - [x] Docker setup
   - [x] Sub-task 1: add a minimal Dockerfile and .dockerignore for running the FastAPI app
   - [x] Sub-task 2: add a compose file and README instructions for running the FastAPI app with a persistent data volume
-- [ ] README with architecture diagram
+- [x] README with architecture diagram
 - [ ] Web UI (optional lightweight frontend)
 
 ## Current priority order
