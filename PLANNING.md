@@ -14,7 +14,7 @@
 - [x] Reranking module (cross-encoder)
 - [x] Structured extraction: dataset name extractor
 - [x] Structured extraction: sample size extractor
-- [ ] Structured extraction: limitations extractor
+- [x] Structured extraction: limitations extractor
 - [ ] Structured extraction: inclusion/exclusion criteria extractor
 - [ ] Confidence estimation: retrieval fallback when no good match
 - [ ] Logging module: per-request latency, token usage, model version
