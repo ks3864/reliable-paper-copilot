@@ -10,6 +10,7 @@ from .metrics import (
     evaluate_qa_pair,
     evaluate_all,
 )
+from .regression import compare_experiment_runs, format_regression_report
 
 __all__ = [
     "AnswerQualityJudge",
@@ -18,6 +19,8 @@ __all__ = [
     "load_experiment_config",
     "persist_experiment_run",
     "run_experiment",
+    "compare_experiment_runs",
+    "format_regression_report",
     "exact_match_score",
     "f1_score",
     "retrieval_hit_rate",
