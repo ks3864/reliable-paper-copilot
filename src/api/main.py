@@ -8,11 +8,13 @@ import tempfile
 import os
 import uuid
 from pathlib import Path
+import time
 
 from ..parsing import parse_pdf, save_parsed, load_parsed
 from ..chunking import chunk_by_sections, save_chunks, load_chunks
 from ..retrieval import Retriever, create_retriever
 from ..answering import AnswerGenerator, SimpleAnswerGenerator
+from ..utils import RequestLogger
 
 
 app = FastAPI(
@@ -24,6 +26,7 @@ app = FastAPI(
 # In-memory storage for uploaded papers
 # In production, use a proper database
 PAPERS: Dict[str, Dict[str, Any]] = {}
+REQUEST_LOGGER = RequestLogger()
 
 
 class QuestionRequest(BaseModel):
@@ -148,9 +151,28 @@ async def ask_question(request: QuestionRequest):
     # Create answer generator (using mock for now - replace with real LLM)
     generator = SimpleAnswerGenerator(retriever)
     
+    started_at = time.perf_counter()
+
     # Generate answer
     result = generator.answer(request.question, top_k=request.top_k)
-    
+    latency_ms = (time.perf_counter() - started_at) * 1000
+
+    REQUEST_LOGGER.log(
+        REQUEST_LOGGER.create_event(
+            endpoint="/ask",
+            paper_id=request.paper_id,
+            question=request.question,
+            latency_ms=latency_ms,
+            token_usage=result.get("token_usage", {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}),
+            model_version=result.get("model_version", "unknown"),
+            extra={
+                "num_chunks_retrieved": result.get("num_chunks_retrieved", 0),
+                "sources": result.get("sources", []),
+                "has_good_match": result.get("confidence", {}).get("has_good_match"),
+            },
+        )
+    )
+
     return QuestionResponse(
         question=result["question"],
         answer=result["answer"],

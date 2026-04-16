@@ -5,6 +5,8 @@ import json
 from pathlib import Path
 from typing import Any, Dict
 
+from .request_logging import RequestLogger
+
 
 def compute_file_hash(file_path: str) -> str:
     """Compute SHA256 hash of a file."""
@@ -46,3 +48,14 @@ def get_data_dir(subdir: str = None) -> Path:
     if subdir:
         data_dir = data_dir / subdir
     return ensure_dir(str(data_dir))
+
+
+__all__ = [
+    "RequestLogger",
+    "compute_file_hash",
+    "ensure_dir",
+    "load_json",
+    "save_json",
+    "get_project_root",
+    "get_data_dir",
+]

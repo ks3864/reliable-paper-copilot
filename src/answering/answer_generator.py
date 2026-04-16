@@ -2,6 +2,13 @@
 
 from typing import Dict, Any, Callable
 
+DEFAULT_MODEL_VERSION = "mock-llm-v1"
+
+
+def estimate_token_count(text: str) -> int:
+    """Estimate token count with a simple whitespace heuristic."""
+    return len(text.split()) if text else 0
+
 from src.prompting import build_answer_prompt, build_citation
 
 from .confidence import RetrievalConfidenceEstimator
@@ -15,11 +22,13 @@ class AnswerGenerator:
         retriever,
         llm_callable: Callable[[str], str],
         confidence_estimator: RetrievalConfidenceEstimator | None = None,
+        model_version: str = DEFAULT_MODEL_VERSION,
     ):
         """Initialize answer generator."""
         self.retriever = retriever
         self.llm_callable = llm_callable
         self.confidence_estimator = confidence_estimator or RetrievalConfidenceEstimator()
+        self.model_version = model_version
 
     def answer(self, question: str, top_k: int = 5, include_citations: bool = True) -> Dict[str, Any]:
         """
@@ -44,7 +53,9 @@ class AnswerGenerator:
                 "answer": "I couldn't find any relevant information in the paper to answer your question.",
                 "retrieved_chunks": [],
                 "question": question,
-                "sources": []
+                "sources": [],
+                "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                "model_version": self.model_version,
             }
         
         confidence = self.confidence_estimator.assess(retrieved_chunks)
@@ -56,16 +67,23 @@ class AnswerGenerator:
                 "sources": [],
                 "num_chunks_retrieved": len(retrieved_chunks),
                 "confidence": confidence,
+                "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                "model_version": self.model_version,
             }
 
         # Build prompt
         prompt = build_answer_prompt(question, retrieved_chunks)
 
+        prompt_tokens = estimate_token_count(prompt)
+
         # Generate answer
         generated_text = self.llm_callable(prompt)
-        
+        raw_completion_tokens = estimate_token_count(generated_text)
+
         if include_citations:
             generated_text = build_citation(generated_text, retrieved_chunks)
+
+        completion_tokens = estimate_token_count(generated_text)
         
         # Extract source sections
         sources = list(dict.fromkeys(
@@ -79,6 +97,12 @@ class AnswerGenerator:
             "sources": sources,
             "num_chunks_retrieved": len(retrieved_chunks),
             "confidence": confidence,
+            "token_usage": {
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": max(completion_tokens, raw_completion_tokens),
+                "total_tokens": prompt_tokens + max(completion_tokens, raw_completion_tokens),
+            },
+            "model_version": self.model_version,
         }
 
 
@@ -110,7 +134,7 @@ class SimpleAnswerGenerator(AnswerGenerator):
     """
     
     def __init__(self, retriever):
-        super().__init__(retriever, create_mock_llm_callable())
+        super().__init__(retriever, create_mock_llm_callable(), model_version=DEFAULT_MODEL_VERSION)
 
 
 if __name__ == "__main__":

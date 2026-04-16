@@ -17,7 +17,7 @@
 - [x] Structured extraction: limitations extractor
 - [x] Structured extraction: inclusion/exclusion criteria extractor
 - [x] Confidence estimation: retrieval fallback when no good match
-- [ ] Logging module: per-request latency, token usage, model version
+- [x] Logging module: per-request latency, token usage, model version
 - [ ] Eval set expansion (30-50 QA pairs)
 - [ ] Answer quality scoring (LLM-as-judge)
 
