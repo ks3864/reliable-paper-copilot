@@ -1,0 +1,16 @@
+experiment:
+  name: regression-eval
+  pipeline_version: chunking-v1
+  description: Regression baseline using coarse section-level chunks.
+
+retrieval:
+  embedding_model: all-MiniLM-L6-v2
+  chunk_profile: chunking-v1
+
+answering:
+  generator: simple
+  judge: mock
+
+evaluation:
+  top_k: 5
+  use_answer_quality_judge: true

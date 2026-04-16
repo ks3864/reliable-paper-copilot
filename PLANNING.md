@@ -27,9 +27,9 @@
 - [x] Pipeline versioning: config-based experiment runner
   - [x] Sub-task 1: add a baseline experiment config and reusable config loader/runner
   - [x] Sub-task 2: persist experiment outputs and versioned summaries
-- [ ] Regression testing: compare chunking v1 vs v2 on eval set
+- [x] Regression testing: compare chunking v1 vs v2 on eval set
   - [x] Sub-task 1: add a regression comparison utility and CLI for comparing two experiment result payloads
-  - [ ] Sub-task 2: add chunking-v1 and chunking-v2 experiment configs and generate comparable runs on the eval set
+  - [x] Sub-task 2: add chunking-v1 and chunking-v2 experiment configs and generate comparable runs on the eval set
 - [ ] Docker setup
 - [ ] README with architecture diagram
 - [ ] Web UI (optional lightweight frontend)

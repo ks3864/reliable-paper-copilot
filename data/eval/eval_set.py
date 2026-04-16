@@ -1,8 +1,8 @@
-"""Expanded synthetic evaluation set for MVP and reliability checks."""
+"""Expanded synthetic evaluation set for MVP, reliability checks, and regression experiments."""
 
 import json
 from pathlib import Path
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 SAMPLE_PAPER_CHUNKS = [
@@ -79,6 +79,69 @@ SAMPLE_PAPER_CHUNKS = [
         "metadata": {"source": "molecular_gnn_paper"}
     }
 ]
+
+
+def build_chunking_v1_chunks() -> List[Dict[str, Any]]:
+    """Build a coarse chunk set that approximates the original section-level chunking."""
+    grouped_sections = [
+        ["abstract", "introduction"],
+        ["methods", "experiments"],
+        ["results", "conclusions"],
+    ]
+
+    by_source: Dict[str, List[Dict[str, Any]]] = {}
+    for chunk in SAMPLE_PAPER_CHUNKS:
+        by_source.setdefault(chunk["metadata"]["source"], []).append(chunk)
+
+    coarse_chunks: List[Dict[str, Any]] = []
+    next_chunk_id = 0
+    for source, source_chunks in by_source.items():
+        for section_group in grouped_sections:
+            matching = [chunk for chunk in source_chunks if chunk["section"] in section_group]
+            if not matching:
+                continue
+
+            coarse_chunks.append(
+                {
+                    "chunk_id": next_chunk_id,
+                    "section": matching[0]["section"],
+                    "text": "\n\n".join(chunk["text"] for chunk in matching),
+                    "metadata": {
+                        "source": source,
+                        "chunking_strategy": "section_v1",
+                        "merged_sections": [chunk["section"] for chunk in matching],
+                    },
+                }
+            )
+            next_chunk_id += 1
+
+    return coarse_chunks
+
+
+def build_chunking_v2_chunks() -> List[Dict[str, Any]]:
+    """Return the current fine-grained chunk set with explicit version metadata."""
+    enriched_chunks: List[Dict[str, Any]] = []
+    for chunk in SAMPLE_PAPER_CHUNKS:
+        enriched_chunks.append(
+            {
+                **chunk,
+                "metadata": {
+                    **chunk["metadata"],
+                    "chunking_strategy": "section_v2",
+                },
+            }
+        )
+    return enriched_chunks
+
+
+def get_eval_chunks(profile: str = "chunking-v2") -> List[Dict[str, Any]]:
+    """Return evaluation chunks for a named chunking profile."""
+    normalized = (profile or "chunking-v2").strip().lower()
+    if normalized in {"chunking-v1", "v1", "baseline"}:
+        return build_chunking_v1_chunks()
+    if normalized in {"chunking-v2", "v2", "default"}:
+        return build_chunking_v2_chunks()
+    raise ValueError(f"Unsupported eval chunk profile: {profile}")
 
 
 EVAL_QA_PAIRS = [
@@ -300,14 +363,23 @@ def save_eval_set(output_dir: str = "data/eval") -> None:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
+    v2_chunks = get_eval_chunks("chunking-v2")
+    v1_chunks = get_eval_chunks("chunking-v1")
+
     with open(output_path / "sample_chunks.json", "w") as f:
-        json.dump({"chunks": SAMPLE_PAPER_CHUNKS, "total": len(SAMPLE_PAPER_CHUNKS)}, f, indent=2)
+        json.dump({"chunks": v2_chunks, "total": len(v2_chunks)}, f, indent=2)
+
+    with open(output_path / "sample_chunks_chunking_v1.json", "w") as f:
+        json.dump({"chunks": v1_chunks, "total": len(v1_chunks)}, f, indent=2)
+
+    with open(output_path / "sample_chunks_chunking_v2.json", "w") as f:
+        json.dump({"chunks": v2_chunks, "total": len(v2_chunks)}, f, indent=2)
 
     with open(output_path / "qa_pairs.json", "w") as f:
         json.dump({"qa_pairs": EVAL_QA_PAIRS, "total": len(EVAL_QA_PAIRS)}, f, indent=2)
 
     print(f"Saved evaluation set to {output_dir}")
-    print(f"  - {len(SAMPLE_PAPER_CHUNKS)} chunks")
+    print(f"  - {len(v2_chunks)} default chunks")
     print(f"  - {len(EVAL_QA_PAIRS)} QA pairs")
 
 

@@ -1,7 +1,7 @@
 experiment:
-  name: baseline-eval
-  pipeline_version: phase3-pipeline-versioning-v1
-  description: Baseline experiment config for the sample evaluation pipeline.
+  name: regression-eval
+  pipeline_version: chunking-v2
+  description: Regression candidate using overlap-aware reliability chunking.
 
 retrieval:
   embedding_model: all-MiniLM-L6-v2

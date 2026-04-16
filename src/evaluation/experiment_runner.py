@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List
 
 import yaml
 
-from data.eval.eval_set import EVAL_QA_PAIRS, SAMPLE_PAPER_CHUNKS, save_eval_set
+from data.eval.eval_set import EVAL_QA_PAIRS, get_eval_chunks, save_eval_set
 
 from .judge import AnswerQualityJudge, create_mock_judge_callable
 from .metrics import evaluate_all
@@ -33,6 +33,7 @@ DEFAULT_CONFIG: ExperimentConfig = {
     },
     "retrieval": {
         "embedding_model": "all-MiniLM-L6-v2",
+        "chunk_profile": "chunking-v2",
     },
     "answering": {
         "generator": "simple",
@@ -149,7 +150,7 @@ def run_experiment(
     save_eval_set()
 
     retriever = (retriever_factory or _default_retriever_factory)(
-        SAMPLE_PAPER_CHUNKS,
+        get_eval_chunks(config["retrieval"].get("chunk_profile", "chunking-v2")),
         config["retrieval"].get("embedding_model"),
     )
     generator = (generator_factory or _default_generator_factory)(

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 
+from data.eval.eval_set import get_eval_chunks
 from src.evaluation.experiment_runner import load_experiment_config, run_experiment
 
 
@@ -17,7 +18,17 @@ def test_load_experiment_config_applies_defaults(tmp_path):
     assert config["experiment"]["pipeline_version"] == "v-test"
     assert config["evaluation"]["top_k"] == 3
     assert config["retrieval"]["embedding_model"] == "all-MiniLM-L6-v2"
+    assert config["retrieval"]["chunk_profile"] == "chunking-v2"
     assert config["answering"]["generator"] == "simple"
+
+
+def test_get_eval_chunks_returns_distinct_regression_profiles():
+    v1_chunks = get_eval_chunks("chunking-v1")
+    v2_chunks = get_eval_chunks("chunking-v2")
+
+    assert len(v1_chunks) < len(v2_chunks)
+    assert all(chunk["metadata"]["chunking_strategy"] == "section_v1" for chunk in v1_chunks)
+    assert all(chunk["metadata"]["chunking_strategy"] == "section_v2" for chunk in v2_chunks)
 
 
 class StubRetriever:
@@ -74,6 +85,24 @@ def test_run_experiment_returns_versioned_metadata():
     assert "aggregate" in result["metrics"]
     assert "run_id" in result
     assert "generated_at" in result
+
+
+def test_run_experiment_uses_configured_chunk_profile():
+    seen = {}
+
+    def capture_retriever_factory(chunks, model_name):
+        seen["chunks"] = chunks
+        return StubRetriever()
+
+    run_experiment(
+        Path("configs/experiments/chunking-v1.yaml"),
+        retriever_factory=capture_retriever_factory,
+        generator_factory=lambda retriever, generator_name: StubGenerator(),
+        judge_factory=lambda enabled: None,
+    )
+
+    assert len(seen["chunks"]) == len(get_eval_chunks("chunking-v1"))
+    assert all(chunk["metadata"]["chunking_strategy"] == "section_v1" for chunk in seen["chunks"])
 
 
 def test_run_experiment_persists_versioned_outputs(tmp_path):

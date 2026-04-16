@@ -1,12 +1,26 @@
-"""Embedding-Based Retrieval Module with optional reranking."""
+"""Embedding-based retrieval with optional fallback lexical scoring."""
+
+from __future__ import annotations
 
 import json
 import os
+import re
 from typing import Any, Dict, List, Optional
 
-import faiss
-import numpy as np
-from sentence_transformers import SentenceTransformer
+try:
+    import faiss
+except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback
+    faiss = None
+
+try:
+    import numpy as np
+except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback
+    np = None
+
+try:
+    from sentence_transformers import SentenceTransformer
+except ModuleNotFoundError:  # pragma: no cover - optional dependency fallback
+    SentenceTransformer = None
 
 from .reranker import BaseReranker
 
@@ -22,11 +36,13 @@ class Retriever:
             model_name: Name of sentence-transformers model
             reranker: Optional reranker applied after vector search
         """
-        self.model = SentenceTransformer(model_name)
+        self.model_name = model_name
+        self.model = SentenceTransformer(model_name) if SentenceTransformer is not None else None
         self.reranker = reranker
         self.index: Optional[faiss.Index] = None
         self.chunks: List[Dict[str, Any]] = []
         self.chunk_embeddings: Optional[np.ndarray] = None
+        self.use_lexical_fallback = self.model is None or faiss is None or np is None
 
     def build_index(self, chunks: List[Dict[str, Any]]) -> None:
         """
@@ -36,6 +52,12 @@ class Retriever:
             chunks: List of chunk dictionaries from chunking module
         """
         self.chunks = chunks
+
+        if self.use_lexical_fallback:
+            print("sentence-transformers/faiss unavailable, using lexical retrieval fallback.")
+            self.index = None
+            self.chunk_embeddings = None
+            return
 
         texts = [chunk["text"] for chunk in chunks]
 
@@ -64,6 +86,8 @@ class Retriever:
             List of chunk dictionaries with similarity scores and optional reranker scores.
         """
         if self.index is None:
+            if self.use_lexical_fallback:
+                return self._retrieve_lexically(query, top_k=top_k)
             raise ValueError("Index not built. Call build_index() first.")
 
         search_k = min(max(rerank_top_k or top_k, top_k), self.index.ntotal)
@@ -86,9 +110,32 @@ class Retriever:
 
         return results[:top_k]
 
+    def _retrieve_lexically(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
+        query_terms = set(re.findall(r"\w+", query.lower()))
+        scored: List[Dict[str, Any]] = []
+
+        for chunk in self.chunks:
+            chunk_terms = set(re.findall(r"\w+", chunk["text"].lower()))
+            overlap = query_terms & chunk_terms
+            score = len(overlap) / max(len(query_terms), 1)
+            updated = dict(chunk)
+            updated["retrieval_score"] = float(score)
+            scored.append(updated)
+
+        scored.sort(key=lambda chunk: chunk["retrieval_score"], reverse=True)
+        for rank, chunk in enumerate(scored, start=1):
+            chunk["rank"] = rank
+
+        results = scored[:top_k]
+        if self.reranker is not None and results:
+            return self.reranker.rerank(query, results, top_k=top_k)
+        return results
+
     def save(self, index_path: str, chunks_path: str) -> None:
         """Save index and chunks to disk."""
         if self.index is None:
+            if self.use_lexical_fallback:
+                raise ValueError("Lexical fallback retrievers do not persist FAISS indexes.")
             raise ValueError("No index to save.")
 
         faiss.write_index(self.index, index_path)

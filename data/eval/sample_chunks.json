@@ -5,7 +5,8 @@
       "section": "abstract",
       "text": "This paper presents a novel approach to neural machine translation using transformer architectures. We demonstrate significant improvements over previous seq2seq models.",
       "metadata": {
-        "source": "sample_paper"
+        "source": "sample_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -13,7 +14,8 @@
       "section": "introduction",
       "text": "Neural machine translation has seen rapid progress with the advent of attention mechanisms. Previous approaches relied on RNNs which struggled with long-range dependencies.",
       "metadata": {
-        "source": "sample_paper"
+        "source": "sample_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -21,7 +23,8 @@
       "section": "methods",
       "text": "We use a transformer model with 6 encoder layers and 6 decoder layers. Each layer uses multi-head self-attention with 8 attention heads. The model has 65 million parameters.",
       "metadata": {
-        "source": "sample_paper"
+        "source": "sample_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -29,7 +32,8 @@
       "section": "experiments",
       "text": "We evaluate on the WMT English-German translation task. Our model achieves 28.4 BLEU score, improving over the previous best of 25.8 by 2.6 points.",
       "metadata": {
-        "source": "sample_paper"
+        "source": "sample_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -37,7 +41,8 @@
       "section": "results",
       "text": "The transformer model outperforms RNN-based models significantly. We observe a 10% reduction in training time due to parallelization across layers.",
       "metadata": {
-        "source": "sample_paper"
+        "source": "sample_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -45,7 +50,8 @@
       "section": "conclusions",
       "text": "We have demonstrated that transformer architectures are highly effective for machine translation. Future work will explore multilingual models and larger datasets.",
       "metadata": {
-        "source": "sample_paper"
+        "source": "sample_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -53,7 +59,8 @@
       "section": "abstract",
       "text": "This paper introduces a graph neural network for predicting molecular properties from 2D molecular structures. The method improves toxicity prediction performance compared with descriptor-based baselines.",
       "metadata": {
-        "source": "molecular_gnn_paper"
+        "source": "molecular_gnn_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -61,7 +68,8 @@
       "section": "introduction",
       "text": "Accurate molecular property prediction is important for early drug discovery. Prior descriptor-engineering pipelines require handcrafted features and can miss relational structure between atoms and bonds.",
       "metadata": {
-        "source": "molecular_gnn_paper"
+        "source": "molecular_gnn_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -69,7 +77,8 @@
       "section": "methods",
       "text": "Our model uses message passing over molecular graphs with 4 graph convolution layers and a hidden size of 128. Node embeddings are pooled with global mean pooling before a two-layer prediction head.",
       "metadata": {
-        "source": "molecular_gnn_paper"
+        "source": "molecular_gnn_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -77,7 +86,8 @@
       "section": "experiments",
       "text": "We evaluate on the Tox21 benchmark with scaffold-based train validation test splits. The proposed graph model achieves an AUROC of 0.842, compared with 0.791 for a random forest baseline.",
       "metadata": {
-        "source": "molecular_gnn_paper"
+        "source": "molecular_gnn_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -85,7 +95,8 @@
       "section": "results",
       "text": "The graph model performs best on toxicity tasks involving aromatic compounds and halogenated molecules. An ablation removing message passing drops AUROC by 0.031, showing relational reasoning is important.",
       "metadata": {
-        "source": "molecular_gnn_paper"
+        "source": "molecular_gnn_paper",
+        "chunking_strategy": "section_v2"
       }
     },
     {
@@ -93,7 +104,8 @@
       "section": "conclusions",
       "text": "We conclude that graph neural networks provide a strong inductive bias for molecular prediction. Future work will incorporate 3D conformer information and uncertainty calibration.",
       "metadata": {
-        "source": "molecular_gnn_paper"
+        "source": "molecular_gnn_paper",
+        "chunking_strategy": "section_v2"
       }
     }
   ],
