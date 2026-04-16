@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from copy import deepcopy
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable, Dict, List
 
@@ -18,6 +20,9 @@ ExperimentConfig = Dict[str, Any]
 RetrieverFactory = Callable[[List[Dict[str, Any]], str | None], Any]
 GeneratorFactory = Callable[[Any, str | None], Any]
 JudgeFactory = Callable[[bool], Any]
+
+
+DEFAULT_OUTPUT_ROOT = Path("artifacts/experiments")
 
 
 DEFAULT_CONFIG: ExperimentConfig = {
@@ -76,12 +81,68 @@ def _default_judge_factory(enabled: bool):
     return AnswerQualityJudge(create_mock_judge_callable())
 
 
+def _slugify(value: str) -> str:
+    return "".join(char.lower() if char.isalnum() else "-" for char in value).strip("-") or "experiment"
+
+
+def _build_summary_text(experiment_run: Dict[str, Any]) -> str:
+    experiment = experiment_run["experiment"]
+    aggregate = experiment_run["metrics"]["aggregate"]
+    lines = [
+        f"# Experiment Summary: {experiment['name']}",
+        "",
+        f"- Pipeline version: {experiment['pipeline_version']}",
+        f"- Run ID: {experiment_run['run_id']}",
+        f"- QA pairs evaluated: {len(experiment_run['results'])}",
+        f"- Exact match: {aggregate['exact_match']:.2%}",
+        f"- F1: {aggregate['f1']:.2%}",
+        f"- Retrieval hit: {aggregate['retrieval_hit']:.2%}",
+        f"- Retrieval MRR: {aggregate['retrieval_mrr']:.2%}",
+    ]
+
+    for metric_name in ("groundedness", "correctness", "completeness", "answer_quality"):
+        if metric_name in aggregate:
+            lines.append(f"- {metric_name.replace('_', ' ').title()}: {aggregate[metric_name]:.2%}")
+
+    return "\n".join(lines) + "\n"
+
+
+def persist_experiment_run(
+    experiment_run: Dict[str, Any],
+    *,
+    output_root: str | Path = DEFAULT_OUTPUT_ROOT,
+) -> Path:
+    """Persist raw outputs plus a compact versioned summary for one experiment run."""
+    experiment = experiment_run["experiment"]
+    run_dir = (
+        Path(output_root)
+        / _slugify(experiment["name"])
+        / _slugify(experiment["pipeline_version"])
+        / experiment_run["run_id"]
+    )
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    payload = {
+        "run_id": experiment_run["run_id"],
+        "generated_at": experiment_run["generated_at"],
+        "experiment": experiment,
+        "config": experiment_run["config"],
+        "metrics": experiment_run["metrics"],
+        "results": experiment_run["results"],
+    }
+    (run_dir / "results.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    (run_dir / "summary.md").write_text(_build_summary_text(experiment_run), encoding="utf-8")
+    return run_dir
+
+
 def run_experiment(
     config_path: str | Path,
     *,
     retriever_factory: RetrieverFactory | None = None,
     generator_factory: GeneratorFactory | None = None,
     judge_factory: JudgeFactory | None = None,
+    persist_outputs: bool = False,
+    output_root: str | Path = DEFAULT_OUTPUT_ROOT,
 ) -> Dict[str, Any]:
     """Run the evaluation pipeline from a config file."""
     config = load_experiment_config(config_path)
@@ -106,9 +167,17 @@ def run_experiment(
         results.append(answer)
 
     metrics = evaluate_all(results, EVAL_QA_PAIRS, judge=judge)
-    return {
+    generated_at = datetime.now(timezone.utc)
+    experiment_run = {
+        "run_id": generated_at.strftime("%Y%m%dT%H%M%SZ"),
+        "generated_at": generated_at.isoformat(),
         "experiment": config["experiment"],
         "config": config,
         "results": results,
         "metrics": metrics,
     }
+
+    if persist_outputs:
+        experiment_run["output_dir"] = str(persist_experiment_run(experiment_run, output_root=output_root))
+
+    return experiment_run

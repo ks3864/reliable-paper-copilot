@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from src.evaluation.experiment_runner import load_experiment_config, run_experiment
@@ -71,3 +72,31 @@ def test_run_experiment_returns_versioned_metadata():
     assert result["experiment"]["pipeline_version"] == "phase3-pipeline-versioning-v1"
     assert len(result["results"]) > 0
     assert "aggregate" in result["metrics"]
+    assert "run_id" in result
+    assert "generated_at" in result
+
+
+def test_run_experiment_persists_versioned_outputs(tmp_path):
+    config_path = Path("configs/experiments/baseline.yaml")
+
+    result = run_experiment(
+        config_path,
+        retriever_factory=lambda chunks, model_name: StubRetriever(),
+        generator_factory=lambda retriever, generator_name: StubGenerator(),
+        judge_factory=lambda enabled: None,
+        persist_outputs=True,
+        output_root=tmp_path,
+    )
+
+    output_dir = Path(result["output_dir"])
+    assert output_dir.exists()
+    assert output_dir.parts[-3] == "baseline-eval"
+    assert output_dir.parts[-2] == "phase3-pipeline-versioning-v1"
+
+    results_payload = json.loads((output_dir / "results.json").read_text(encoding="utf-8"))
+    assert results_payload["experiment"]["name"] == "baseline-eval"
+    assert results_payload["run_id"] == result["run_id"]
+
+    summary_text = (output_dir / "summary.md").read_text(encoding="utf-8")
+    assert "# Experiment Summary: baseline-eval" in summary_text
+    assert "Pipeline version: phase3-pipeline-versioning-v1" in summary_text

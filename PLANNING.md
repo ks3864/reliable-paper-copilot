@@ -24,9 +24,9 @@
 - [x] Answer quality scoring (LLM-as-judge)
 
 ## Phase 3 — Production Polish
-- [ ] Pipeline versioning: config-based experiment runner
+- [x] Pipeline versioning: config-based experiment runner
   - [x] Sub-task 1: add a baseline experiment config and reusable config loader/runner
-  - [ ] Sub-task 2: persist experiment outputs and versioned summaries
+  - [x] Sub-task 2: persist experiment outputs and versioned summaries
 - [ ] Regression testing: compare chunking v1 vs v2 on eval set
 - [ ] Docker setup
 - [ ] README with architecture diagram

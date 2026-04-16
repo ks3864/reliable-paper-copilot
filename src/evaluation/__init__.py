@@ -1,6 +1,6 @@
 """Evaluation module."""
 
-from .experiment_runner import load_experiment_config, run_experiment
+from .experiment_runner import load_experiment_config, persist_experiment_run, run_experiment
 from .judge import AnswerQualityJudge, create_mock_judge_callable, parse_judge_response
 from .metrics import (
     exact_match_score,
@@ -16,6 +16,7 @@ __all__ = [
     "create_mock_judge_callable",
     "parse_judge_response",
     "load_experiment_config",
+    "persist_experiment_run",
     "run_experiment",
     "exact_match_score",
     "f1_score",

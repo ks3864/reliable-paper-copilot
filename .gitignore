@@ -33,6 +33,9 @@ models/
 # Logs
 *.log
 
+# Experiment artifacts
+artifacts/
+
 # OS
 .DS_Store
 Thumbs.db

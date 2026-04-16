@@ -18,13 +18,27 @@ def main():
         default="configs/experiments/baseline.yaml",
         help="Path to experiment config YAML.",
     )
+    parser.add_argument(
+        "--output-dir",
+        default="artifacts/experiments",
+        help="Directory where versioned experiment outputs should be stored.",
+    )
+    parser.add_argument(
+        "--no-persist",
+        action="store_true",
+        help="Skip writing experiment artifacts to disk.",
+    )
     args = parser.parse_args()
 
     print("=" * 60)
     print("Reliable Scientific Paper Copilot - Evaluation")
     print("=" * 60)
 
-    experiment_run = run_experiment(args.config)
+    experiment_run = run_experiment(
+        args.config,
+        persist_outputs=not args.no_persist,
+        output_root=args.output_dir,
+    )
     experiment = experiment_run["experiment"]
     results = experiment_run["results"]
     eval_results = experiment_run["metrics"]
@@ -32,6 +46,8 @@ def main():
     print(f"\nExperiment: {experiment['name']}")
     print(f"Pipeline version: {experiment['pipeline_version']}")
     print(f"Loading {len(results)} evaluated QA pairs...")
+    if "output_dir" in experiment_run:
+        print(f"Artifacts saved to: {experiment_run['output_dir']}")
 
     print("\nPer-Question Outputs:")
     for result, metric in zip(results, eval_results["per_question"]):
