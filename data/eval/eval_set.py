@@ -1,4 +1,4 @@
-"""Small Evaluation Set for Phase 1 MVP."""
+"""Expanded synthetic evaluation set for MVP and reliability checks."""
 
 import json
 from pathlib import Path
@@ -53,7 +53,7 @@ EVAL_QA_PAIRS = [
         "relevant_sections": ["abstract", "introduction"]
     },
     {
-        "id": "q2", 
+        "id": "q2",
         "question": "What is the BLEU score achieved?",
         "gold_answer": "28.4 BLEU score on the WMT English-German translation task, improving over the previous best of 25.8 by 2.6 points.",
         "relevant_sections": ["experiments"]
@@ -81,6 +81,78 @@ EVAL_QA_PAIRS = [
         "question": "How many parameters does the model have?",
         "gold_answer": "The model has 65 million parameters.",
         "relevant_sections": ["methods"]
+    },
+    {
+        "id": "q7",
+        "question": "Which translation benchmark is used in the experiments?",
+        "gold_answer": "The experiments use the WMT English-German translation task.",
+        "relevant_sections": ["experiments"]
+    },
+    {
+        "id": "q8",
+        "question": "How much does the new model improve over the previous best BLEU score?",
+        "gold_answer": "It improves on the previous best BLEU score by 2.6 points, from 25.8 to 28.4.",
+        "relevant_sections": ["experiments"]
+    },
+    {
+        "id": "q9",
+        "question": "Why did earlier RNN-based approaches struggle?",
+        "gold_answer": "Earlier RNN-based approaches struggled with long-range dependencies.",
+        "relevant_sections": ["introduction"]
+    },
+    {
+        "id": "q10",
+        "question": "What mechanism helped drive rapid progress in neural machine translation?",
+        "gold_answer": "The advent of attention mechanisms helped drive rapid progress in neural machine translation.",
+        "relevant_sections": ["introduction"]
+    },
+    {
+        "id": "q11",
+        "question": "How many total transformer layers are described across encoder and decoder stacks?",
+        "gold_answer": "The model uses 12 total layers: 6 encoder layers and 6 decoder layers.",
+        "relevant_sections": ["methods"]
+    },
+    {
+        "id": "q12",
+        "question": "What kind of attention is used in each layer?",
+        "gold_answer": "Each layer uses multi-head self-attention.",
+        "relevant_sections": ["methods"]
+    },
+    {
+        "id": "q13",
+        "question": "What evidence suggests the model is more efficient to train?",
+        "gold_answer": "The results report a 10% reduction in training time due to parallelization across layers.",
+        "relevant_sections": ["results"]
+    },
+    {
+        "id": "q14",
+        "question": "What baseline family does the transformer outperform?",
+        "gold_answer": "The transformer outperforms RNN-based models.",
+        "relevant_sections": ["results"]
+    },
+    {
+        "id": "q15",
+        "question": "What two future research directions are proposed?",
+        "gold_answer": "The paper proposes exploring multilingual models and larger datasets.",
+        "relevant_sections": ["conclusions"]
+    },
+    {
+        "id": "q16",
+        "question": "What architecture is claimed to be highly effective for machine translation?",
+        "gold_answer": "Transformer architectures are claimed to be highly effective for machine translation.",
+        "relevant_sections": ["conclusions"]
+    },
+    {
+        "id": "q17",
+        "question": "Summarize the model setup and main quantitative result.",
+        "gold_answer": "The paper uses a transformer with 6 encoder layers, 6 decoder layers, 8 attention heads, and 65 million parameters, and it achieves 28.4 BLEU on WMT English-German.",
+        "relevant_sections": ["methods", "experiments"]
+    },
+    {
+        "id": "q18",
+        "question": "What combined benefits does the paper claim over prior seq2seq and RNN approaches?",
+        "gold_answer": "The paper claims the transformer improves translation quality over prior seq2seq systems while also avoiding RNN long-range dependency issues and reducing training time through parallelization.",
+        "relevant_sections": ["abstract", "introduction", "results"]
     }
 ]
 

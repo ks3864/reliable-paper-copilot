@@ -1,0 +1,53 @@
+{
+  "chunks": [
+    {
+      "chunk_id": 0,
+      "section": "abstract",
+      "text": "This paper presents a novel approach to neural machine translation using transformer architectures. We demonstrate significant improvements over previous seq2seq models.",
+      "metadata": {
+        "source": "sample_paper"
+      }
+    },
+    {
+      "chunk_id": 1,
+      "section": "introduction",
+      "text": "Neural machine translation has seen rapid progress with the advent of attention mechanisms. Previous approaches relied on RNNs which struggled with long-range dependencies.",
+      "metadata": {
+        "source": "sample_paper"
+      }
+    },
+    {
+      "chunk_id": 2,
+      "section": "methods",
+      "text": "We use a transformer model with 6 encoder layers and 6 decoder layers. Each layer uses multi-head self-attention with 8 attention heads. The model has 65 million parameters.",
+      "metadata": {
+        "source": "sample_paper"
+      }
+    },
+    {
+      "chunk_id": 3,
+      "section": "experiments",
+      "text": "We evaluate on the WMT English-German translation task. Our model achieves 28.4 BLEU score, improving over the previous best of 25.8 by 2.6 points.",
+      "metadata": {
+        "source": "sample_paper"
+      }
+    },
+    {
+      "chunk_id": 4,
+      "section": "results",
+      "text": "The transformer model outperforms RNN-based models significantly. We observe a 10% reduction in training time due to parallelization across layers.",
+      "metadata": {
+        "source": "sample_paper"
+      }
+    },
+    {
+      "chunk_id": 5,
+      "section": "conclusions",
+      "text": "We have demonstrated that transformer architectures are highly effective for machine translation. Future work will explore multilingual models and larger datasets.",
+      "metadata": {
+        "source": "sample_paper"
+      }
+    }
+  ],
+  "total": 6
+}
