@@ -34,31 +34,48 @@ def f1_score(prediction: str, gold_answer: str) -> float:
     return 2 * (precision * recall) / (precision + recall)
 
 
-def retrieval_hit_rate(retrieved_chunks: List[Dict[str, Any]], 
-                       relevant_sections: List[str]) -> float:
+def _is_relevant_retrieved_chunk(
+    chunk: Dict[str, Any], relevant_sections: List[str], relevant_source: str | None = None
+) -> bool:
+    """Return True when a retrieved chunk matches the expected section and source."""
+    if chunk.get("section", "") not in set(relevant_sections):
+        return False
+
+    if relevant_source is None:
+        return True
+
+    return chunk.get("metadata", {}).get("source") == relevant_source
+
+
+def retrieval_hit_rate(
+    retrieved_chunks: List[Dict[str, Any]],
+    relevant_sections: List[str],
+    relevant_source: str | None = None,
+) -> float:
     """
     Compute retrieval hit rate.
-    
+
     Returns 1.0 if at least one retrieved chunk comes from a relevant section,
-    0.0 otherwise.
+    and optionally the expected source paper, 0.0 otherwise.
     """
-    retrieved_sections = {chunk.get("section", "") for chunk in retrieved_chunks}
-    relevant_set = set(relevant_sections)
-    
-    return 1.0 if retrieved_sections & relevant_set else 0.0
+    return 1.0 if any(
+        _is_relevant_retrieved_chunk(chunk, relevant_sections, relevant_source)
+        for chunk in retrieved_chunks
+    ) else 0.0
 
 
-def retrieval_mrr(retrieved_chunks: List[Dict[str, Any]],
-                  relevant_sections: List[str]) -> float:
+def retrieval_mrr(
+    retrieved_chunks: List[Dict[str, Any]],
+    relevant_sections: List[str],
+    relevant_source: str | None = None,
+) -> float:
     """
     Compute Mean Reciprocal Rank of first relevant hit.
     """
-    relevant_set = set(relevant_sections)
-    
     for i, chunk in enumerate(retrieved_chunks, 1):
-        if chunk.get("section", "") in relevant_set:
+        if _is_relevant_retrieved_chunk(chunk, relevant_sections, relevant_source):
             return 1.0 / i
-    
+
     return 0.0
 
 
@@ -76,8 +93,16 @@ def evaluate_qa_pair(result: Dict[str, Any], qa_pair: Dict[str, Any]) -> Dict[st
     metrics = {
         "exact_match": exact_match_score(result["answer"], qa_pair["gold_answer"]),
         "f1": f1_score(result["answer"], qa_pair["gold_answer"]),
-        "retrieval_hit": retrieval_hit_rate(result["retrieved_chunks"], qa_pair["relevant_sections"]),
-        "retrieval_mrr": retrieval_mrr(result["retrieved_chunks"], qa_pair["relevant_sections"])
+        "retrieval_hit": retrieval_hit_rate(
+            result["retrieved_chunks"],
+            qa_pair["relevant_sections"],
+            qa_pair.get("source"),
+        ),
+        "retrieval_mrr": retrieval_mrr(
+            result["retrieved_chunks"],
+            qa_pair["relevant_sections"],
+            qa_pair.get("source"),
+        )
     }
     
     return metrics

@@ -7,7 +7,8 @@
       "relevant_sections": [
         "abstract",
         "introduction"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q2",
@@ -15,7 +16,8 @@
       "gold_answer": "28.4 BLEU score on the WMT English-German translation task, improving over the previous best of 25.8 by 2.6 points.",
       "relevant_sections": [
         "experiments"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q3",
@@ -23,7 +25,8 @@
       "gold_answer": "The transformer has 6 encoder layers and 6 decoder layers, with multi-head self-attention using 8 attention heads.",
       "relevant_sections": [
         "methods"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q4",
@@ -32,7 +35,8 @@
       "relevant_sections": [
         "introduction",
         "results"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q5",
@@ -40,7 +44,8 @@
       "gold_answer": "Future work will explore multilingual models and larger datasets.",
       "relevant_sections": [
         "conclusions"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q6",
@@ -48,7 +53,8 @@
       "gold_answer": "The model has 65 million parameters.",
       "relevant_sections": [
         "methods"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q7",
@@ -56,7 +62,8 @@
       "gold_answer": "The experiments use the WMT English-German translation task.",
       "relevant_sections": [
         "experiments"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q8",
@@ -64,7 +71,8 @@
       "gold_answer": "It improves on the previous best BLEU score by 2.6 points, from 25.8 to 28.4.",
       "relevant_sections": [
         "experiments"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q9",
@@ -72,7 +80,8 @@
       "gold_answer": "Earlier RNN-based approaches struggled with long-range dependencies.",
       "relevant_sections": [
         "introduction"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q10",
@@ -80,7 +89,8 @@
       "gold_answer": "The advent of attention mechanisms helped drive rapid progress in neural machine translation.",
       "relevant_sections": [
         "introduction"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q11",
@@ -88,7 +98,8 @@
       "gold_answer": "The model uses 12 total layers: 6 encoder layers and 6 decoder layers.",
       "relevant_sections": [
         "methods"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q12",
@@ -96,7 +107,8 @@
       "gold_answer": "Each layer uses multi-head self-attention.",
       "relevant_sections": [
         "methods"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q13",
@@ -104,7 +116,8 @@
       "gold_answer": "The results report a 10% reduction in training time due to parallelization across layers.",
       "relevant_sections": [
         "results"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q14",
@@ -112,7 +125,8 @@
       "gold_answer": "The transformer outperforms RNN-based models.",
       "relevant_sections": [
         "results"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q15",
@@ -120,7 +134,8 @@
       "gold_answer": "The paper proposes exploring multilingual models and larger datasets.",
       "relevant_sections": [
         "conclusions"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q16",
@@ -128,7 +143,8 @@
       "gold_answer": "Transformer architectures are claimed to be highly effective for machine translation.",
       "relevant_sections": [
         "conclusions"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q17",
@@ -137,7 +153,8 @@
       "relevant_sections": [
         "methods",
         "experiments"
-      ]
+      ],
+      "source": "sample_paper"
     },
     {
       "id": "q18",
@@ -147,8 +164,118 @@
         "abstract",
         "introduction",
         "results"
-      ]
+      ],
+      "source": "sample_paper"
+    },
+    {
+      "id": "q19",
+      "question": "What problem does the second paper address?",
+      "gold_answer": "It addresses molecular property prediction from 2D molecular structures, with a focus on improving toxicity prediction.",
+      "relevant_sections": [
+        "abstract",
+        "introduction"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q20",
+      "question": "What benchmark is used to evaluate the molecular graph model?",
+      "gold_answer": "The model is evaluated on the Tox21 benchmark.",
+      "relevant_sections": [
+        "experiments"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q21",
+      "question": "What train validation test splitting strategy is used?",
+      "gold_answer": "The experiments use scaffold-based train validation test splits.",
+      "relevant_sections": [
+        "experiments"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q22",
+      "question": "How many graph convolution layers and what hidden size does the model use?",
+      "gold_answer": "The model uses 4 graph convolution layers with a hidden size of 128.",
+      "relevant_sections": [
+        "methods"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q23",
+      "question": "How are node embeddings aggregated before prediction?",
+      "gold_answer": "Node embeddings are aggregated using global mean pooling before a two-layer prediction head.",
+      "relevant_sections": [
+        "methods"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q24",
+      "question": "What AUROC does the graph model achieve, and how does it compare to the baseline?",
+      "gold_answer": "The graph model achieves 0.842 AUROC, compared with 0.791 for the random forest baseline.",
+      "relevant_sections": [
+        "experiments"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q25",
+      "question": "Which baseline is the graph model compared against?",
+      "gold_answer": "It is compared against a random forest baseline.",
+      "relevant_sections": [
+        "experiments"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q26",
+      "question": "On which kinds of molecules does the graph model perform best?",
+      "gold_answer": "It performs best on toxicity tasks involving aromatic compounds and halogenated molecules.",
+      "relevant_sections": [
+        "results"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q27",
+      "question": "What happens when message passing is removed?",
+      "gold_answer": "Removing message passing lowers AUROC by 0.031, indicating relational reasoning is important.",
+      "relevant_sections": [
+        "results"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q28",
+      "question": "Why do the authors argue graph neural networks are a good fit for this task?",
+      "gold_answer": "They argue graph neural networks provide a strong inductive bias for molecular prediction.",
+      "relevant_sections": [
+        "conclusions"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q29",
+      "question": "What limitation of prior descriptor-based pipelines is highlighted?",
+      "gold_answer": "Prior descriptor-engineering pipelines require handcrafted features and can miss relational structure between atoms and bonds.",
+      "relevant_sections": [
+        "introduction"
+      ],
+      "source": "molecular_gnn_paper"
+    },
+    {
+      "id": "q30",
+      "question": "What future work is proposed for the molecular prediction model?",
+      "gold_answer": "Future work will incorporate 3D conformer information and uncertainty calibration.",
+      "relevant_sections": [
+        "conclusions"
+      ],
+      "source": "molecular_gnn_paper"
     }
   ],
-  "total": 18
+  "total": 30
 }
