@@ -13,7 +13,7 @@
 - [x] Chunking strategy v2: overlap + token-based fallback chunking
 - [x] Reranking module (cross-encoder)
 - [x] Structured extraction: dataset name extractor
-- [ ] Structured extraction: sample size extractor
+- [x] Structured extraction: sample size extractor
 - [ ] Structured extraction: limitations extractor
 - [ ] Structured extraction: inclusion/exclusion criteria extractor
 - [ ] Confidence estimation: retrieval fallback when no good match
