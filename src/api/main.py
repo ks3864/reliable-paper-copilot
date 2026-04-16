@@ -1,7 +1,7 @@
 """FastAPI Application for Reliable Scientific Paper Copilot."""
 
 from fastapi import FastAPI, UploadFile, File, HTTPException, Form
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import tempfile
@@ -15,6 +15,7 @@ from ..chunking import chunk_by_sections, save_chunks, load_chunks
 from ..retrieval import Retriever, create_retriever
 from ..answering import AnswerGenerator, SimpleAnswerGenerator
 from ..utils import RequestLogger
+from .web import WEB_UI_HTML
 
 
 app = FastAPI(
@@ -47,6 +48,12 @@ class PaperStatus(BaseModel):
     title: Optional[str]
     status: str
     num_chunks: int
+
+
+@app.get("/", response_class=HTMLResponse)
+async def web_ui():
+    """Serve a lightweight browser UI for uploading papers and asking questions."""
+    return HTMLResponse(WEB_UI_HTML)
 
 
 @app.get("/health")

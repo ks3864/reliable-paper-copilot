@@ -34,7 +34,7 @@
   - [x] Sub-task 1: add a minimal Dockerfile and .dockerignore for running the FastAPI app
   - [x] Sub-task 2: add a compose file and README instructions for running the FastAPI app with a persistent data volume
 - [x] README with architecture diagram
-- [ ] Web UI (optional lightweight frontend)
+- [x] Web UI (optional lightweight frontend)
 
 ## Current priority order
 1. Pipeline versioning: config-based experiment runner

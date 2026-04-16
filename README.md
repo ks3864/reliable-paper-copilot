@@ -10,6 +10,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **Cross-Encoder Reranking**: Reorder retrieved passages with a higher-precision reranker
 - **Grounded Generation**: Answer questions with citations from the paper
 - **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
+- **Lightweight Web UI**: Browser-based upload and Q&A workflow served directly by the FastAPI app
 
 ## Architecture
 
@@ -65,6 +66,7 @@ The API will be available at `http://localhost:8000`, and local `./data` is moun
 
 ## API Endpoints
 
+- `GET /` - Lightweight web UI
 - `POST /upload` - Upload and process a PDF
 - `POST /ask` - Ask a question about a processed paper
 - `GET /health` - Health check
