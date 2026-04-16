@@ -12,7 +12,7 @@
 ## Phase 2 — Reliability
 - [x] Chunking strategy v2: overlap + token-based fallback chunking
 - [x] Reranking module (cross-encoder)
-- [ ] Structured extraction: dataset name extractor
+- [x] Structured extraction: dataset name extractor
 - [ ] Structured extraction: sample size extractor
 - [ ] Structured extraction: limitations extractor
 - [ ] Structured extraction: inclusion/exclusion criteria extractor
