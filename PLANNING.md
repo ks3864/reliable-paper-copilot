@@ -9,7 +9,7 @@
 - [x] FastAPI app
 - [x] Basic evaluation metrics
 
-## Phase 2 — Reliability
+## Phase 2 — Reliability ✅
 - [x] Chunking strategy v2: overlap + token-based fallback chunking
 - [x] Reranking module (cross-encoder)
 - [x] Structured extraction: dataset name extractor
@@ -23,7 +23,7 @@
   - [x] Sub-task 2: add additional papers / QA coverage to reach 30-50 total QA pairs
 - [x] Answer quality scoring (LLM-as-judge)
 
-## Phase 3 — Production Polish
+## Phase 3 — Production Polish ✅
 - [x] Pipeline versioning: config-based experiment runner
   - [x] Sub-task 1: add a baseline experiment config and reusable config loader/runner
   - [x] Sub-task 2: persist experiment outputs and versioned summaries
@@ -36,15 +36,32 @@
 - [x] README with architecture diagram
 - [x] Web UI (optional lightweight frontend)
 
+## Phase 4 — Portfolio Hardening
+- [ ] Add support for multiple real scientific PDFs with persistent paper registry metadata
+- [ ] Add hybrid retrieval (BM25 + dense retrieval fusion)
+- [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
+- [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
+- [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
+- [ ] Add ingestion smoke tests and end-to-end API tests
+- [ ] Add Makefile / task runner for common workflows (ingest, eval, run-api, run-ui, compare-experiments)
+- [ ] Add one polished demo notebook showing ingestion -> retrieval -> answer -> evaluation
+- [ ] Add sample real-paper package and reproducible demo instructions
+- [ ] Add deployment notes for local + split-host browser-assisted workflows if needed
+
 ## Current priority order
-1. Pipeline versioning: config-based experiment runner
-2. Regression testing: compare chunking v1 vs v2 on eval set
-3. Docker setup
-4. README with architecture diagram
-5. Web UI (optional lightweight frontend)
+1. Add support for multiple real scientific PDFs with persistent paper registry metadata
+2. Add hybrid retrieval (BM25 + dense retrieval fusion)
+3. Add citation span highlighting and page-aware evidence formatting in API/UI responses
+4. Add answerable-vs-unanswerable evaluation slice and refusal metrics
+5. Add benchmark report generation
+6. Add ingestion smoke tests and end-to-end API tests
+7. Add Makefile / task runner
+8. Add polished demo notebook
+9. Add sample real-paper package and reproducible demo instructions
 
 ## Notes
 - Work on one item per session
 - Commit after each item with a descriptive message
 - Announce progress to parent session
 - Keep each item achievable in one ~15-30 min coding session
+- Prefer portfolio-visible improvements now: demo quality, evaluation clarity, reproducibility, and real-paper support
