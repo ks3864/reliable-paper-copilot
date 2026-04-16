@@ -30,8 +30,44 @@ class PaperRegistryTests(unittest.TestCase):
             registry.upsert_paper(record)
 
             reloaded = PaperRegistry(registry_path)
-            self.assertEqual(reloaded.get_paper("paper-1"), record)
-            self.assertEqual(reloaded.list_papers(), [record])
+            reloaded_record = reloaded.get_paper("paper-1")
+            self.assertEqual(reloaded_record["paper_id"], record["paper_id"])
+            self.assertFalse(reloaded_record["artifact_validation"]["all_required_present"])
+            self.assertEqual(
+                reloaded_record["artifact_validation"]["missing_required"],
+                ["raw_pdf_path", "parsed_path", "chunks_path"],
+            )
+            self.assertEqual(reloaded.list_papers(), [reloaded_record])
+
+    def test_paper_registry_reports_artifact_validation(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            raw_path = tmp_path / "paper.pdf"
+            parsed_path = tmp_path / "paper_parsed.json"
+            chunks_path = tmp_path / "paper_chunks.json"
+            raw_path.write_bytes(b"%PDF-1.4")
+            parsed_path.write_text("{}", encoding="utf-8")
+            chunks_path.write_text('{"chunks": []}', encoding="utf-8")
+
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-valid",
+                    "title": "Validated Paper",
+                    "status": "ready",
+                    "num_chunks": 0,
+                    "raw_pdf_path": str(raw_path),
+                    "parsed_path": str(parsed_path),
+                    "chunks_path": str(chunks_path),
+                    "index_path": str(tmp_path / "missing.faiss"),
+                    "created_at": "2026-04-16T21:31:00Z",
+                }
+            )
+
+            validated = registry.get_paper("paper-valid")
+            self.assertTrue(validated["artifact_validation"]["all_required_present"])
+            self.assertEqual(validated["artifact_validation"]["missing_required"], [])
+            self.assertFalse(validated["artifact_validation"]["artifacts"]["index_path"]["exists"])
 
 
 @unittest.skipIf(TestClient is None or api_main is None, "fastapi is not installed")
@@ -47,6 +83,7 @@ class PaperRegistryApiTests(unittest.TestCase):
                     "status": "ready",
                     "num_chunks": 7,
                     "page_count": 12,
+                    "file_size_bytes": 2048,
                     "created_at": "2026-04-16T21:31:00Z",
                 }
             )
@@ -61,18 +98,17 @@ class PaperRegistryApiTests(unittest.TestCase):
                 self.assertEqual(payload["papers"][0]["paper_id"], "paper-2")
                 self.assertEqual(payload["papers"][0]["original_filename"], "persistent.pdf")
                 self.assertEqual(payload["papers"][0]["page_count"], 12)
+                self.assertEqual(payload["papers"][0]["file_size_bytes"], 2048)
+                self.assertFalse(payload["papers"][0]["artifact_validation"]["all_required_present"])
 
                 status_response = client.get("/papers/paper-2/status")
                 self.assertEqual(status_response.status_code, 200)
-                self.assertEqual(
-                    status_response.json(),
-                    {
-                        "paper_id": "paper-2",
-                        "title": "Persistent Paper",
-                        "status": "ready",
-                        "num_chunks": 7,
-                    },
-                )
+                status_payload = status_response.json()
+                self.assertEqual(status_payload["paper_id"], "paper-2")
+                self.assertEqual(status_payload["title"], "Persistent Paper")
+                self.assertEqual(status_payload["status"], "ready")
+                self.assertEqual(status_payload["num_chunks"], 7)
+                self.assertIn("artifact_validation", status_payload)
                 self.assertIn("paper-2", api_main.PAPERS)
 
     def test_ask_route_can_rebuild_retriever_from_registry_metadata(self):

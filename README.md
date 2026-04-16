@@ -11,6 +11,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **Grounded Generation**: Answer questions with citations from the paper
 - **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
 - **Lightweight Web UI**: Browser-based upload and Q&A workflow served directly by the FastAPI app
+- **Persistent Paper Registry**: Stored paper metadata now includes artifact validation summaries and file size metadata for uploaded PDFs
 
 ## Architecture
 

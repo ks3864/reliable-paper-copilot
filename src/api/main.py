@@ -50,6 +50,7 @@ class PaperStatus(BaseModel):
     title: Optional[str]
     status: str
     num_chunks: int
+    artifact_validation: Optional[Dict[str, Any]] = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -141,18 +142,21 @@ async def upload_paper(file: UploadFile = File(...)):
             "raw_pdf_path": str(raw_pdf_path),
             "num_chunks": len(chunks),
             "page_count": parsed["metadata"].get("page_count", 0),
+            "file_size_bytes": len(content),
             "file_hash": compute_file_hash(str(raw_pdf_path)),
             "created_at": created_at,
         }
         PAPER_REGISTRY.upsert_paper(record)
-        cached = _hydrate_paper_cache(record)
+        persisted_record = PAPER_REGISTRY.get_paper(paper_id) or record
+        cached = _hydrate_paper_cache(persisted_record)
         cached["retriever"] = retriever
 
         return PaperStatus(
             paper_id=paper_id,
-            title=record["title"],
-            status=record["status"],
-            num_chunks=record["num_chunks"],
+            title=persisted_record["title"],
+            status=persisted_record["status"],
+            num_chunks=persisted_record["num_chunks"],
+            artifact_validation=persisted_record.get("artifact_validation"),
         )
         
     except Exception as e:
@@ -238,7 +242,8 @@ async def get_paper_status(paper_id: str):
         paper_id=paper_id,
         title=paper.get("title"),
         status=paper.get("status", "unknown"),
-        num_chunks=paper.get("num_chunks", 0)
+        num_chunks=paper.get("num_chunks", 0),
+        artifact_validation=paper.get("artifact_validation"),
     )
 
 
@@ -259,7 +264,9 @@ async def list_papers():
                 "num_chunks": paper.get("num_chunks", 0),
                 "original_filename": paper.get("original_filename"),
                 "page_count": paper.get("page_count", 0),
+                "file_size_bytes": paper.get("file_size_bytes", 0),
                 "created_at": paper.get("created_at"),
+                "artifact_validation": paper.get("artifact_validation"),
             }
             for paper in papers
         ],

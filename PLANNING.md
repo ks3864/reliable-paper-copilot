@@ -39,7 +39,8 @@
 ## Phase 4 — Portfolio Hardening
 - [ ] Add support for multiple real scientific PDFs with persistent paper registry metadata
   - [x] Sub-task 1: add a persistent paper registry and registry-backed API paper loading/listing across restarts
-  - [ ] Sub-task 2: extend ingestion/registry metadata for richer real-paper management and artifact validation
+  - [x] Sub-task 2: extend ingestion/registry metadata with artifact validation summaries and file size metadata
+  - [ ] Sub-task 3: add richer real-paper metadata fields, such as ingestion notes and extracted summary metadata
 - [ ] Add hybrid retrieval (BM25 + dense retrieval fusion)
 - [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
@@ -52,7 +53,7 @@
 
 ## Current priority order
 1. Add support for multiple real scientific PDFs with persistent paper registry metadata
-   - Next sub-task: extend ingestion/registry metadata for richer real-paper management and artifact validation
+   - Next sub-task: add richer real-paper metadata fields, such as ingestion notes and extracted summary metadata
 2. Add hybrid retrieval (BM25 + dense retrieval fusion)
 3. Add citation span highlighting and page-aware evidence formatting in API/UI responses
 4. Add answerable-vs-unanswerable evaluation slice and refusal metrics
