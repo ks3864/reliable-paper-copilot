@@ -1,34 +1,26 @@
 """Answering Module - Generate grounded answers with citations."""
 
-from typing import Dict, Any, List, Optional, Callable
-import json
+from typing import Dict, Any, Callable
 
-from .prompting import build_answer_prompt, build_citation
+from src.prompting import build_answer_prompt, build_citation
+
+from .confidence import RetrievalConfidenceEstimator
 
 
 class AnswerGenerator:
-    """
-    Generate answers to questions about papers using retrieval + generation.
-    
-    This is a thin wrapper that:
-    1. Takes a retriever to fetch relevant chunks
-    2. Builds a prompt with the retrieved context
-    3. Calls an LLM to generate the answer
-    
-    The actual LLM call is delegated to a provided callable.
-    """
-    
-    def __init__(self, retriever, llm_callable: Callable[[str], str]):
-        """
-        Initialize answer generator.
-        
-        Args:
-            retriever: Retriever instance for fetching relevant chunks
-            llm_callable: Function that takes a prompt string and returns generated text
-        """
+    """Generate answers using retrieval, confidence checks, and an LLM."""
+
+    def __init__(
+        self,
+        retriever,
+        llm_callable: Callable[[str], str],
+        confidence_estimator: RetrievalConfidenceEstimator | None = None,
+    ):
+        """Initialize answer generator."""
         self.retriever = retriever
         self.llm_callable = llm_callable
-    
+        self.confidence_estimator = confidence_estimator or RetrievalConfidenceEstimator()
+
     def answer(self, question: str, top_k: int = 5, include_citations: bool = True) -> Dict[str, Any]:
         """
         Answer a question about the paper.
@@ -55,9 +47,20 @@ class AnswerGenerator:
                 "sources": []
             }
         
+        confidence = self.confidence_estimator.assess(retrieved_chunks)
+        if not confidence["has_good_match"]:
+            return {
+                "answer": "I couldn't find a strong enough match in the paper to answer confidently.",
+                "retrieved_chunks": retrieved_chunks,
+                "question": question,
+                "sources": [],
+                "num_chunks_retrieved": len(retrieved_chunks),
+                "confidence": confidence,
+            }
+
         # Build prompt
         prompt = build_answer_prompt(question, retrieved_chunks)
-        
+
         # Generate answer
         generated_text = self.llm_callable(prompt)
         
@@ -74,7 +77,8 @@ class AnswerGenerator:
             "retrieved_chunks": retrieved_chunks,
             "question": question,
             "sources": sources,
-            "num_chunks_retrieved": len(retrieved_chunks)
+            "num_chunks_retrieved": len(retrieved_chunks),
+            "confidence": confidence,
         }
 
 
