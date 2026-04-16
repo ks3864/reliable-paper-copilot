@@ -25,22 +25,19 @@
 
 ## Phase 3 — Production Polish
 - [ ] Pipeline versioning: config-based experiment runner
+  - [x] Sub-task 1: add a baseline experiment config and reusable config loader/runner
+  - [ ] Sub-task 2: persist experiment outputs and versioned summaries
 - [ ] Regression testing: compare chunking v1 vs v2 on eval set
 - [ ] Docker setup
 - [ ] README with architecture diagram
 - [ ] Web UI (optional lightweight frontend)
 
-## Current priority order (Phase 2 next steps)
-1. Chunking strategy v2: overlap + token-based fallback chunking
-2. Reranking module (cross-encoder)
-3. Structured extraction: dataset name extractor
-4. Structured extraction: sample size extractor
-5. Structured extraction: limitations extractor
-6. Confidence estimation module
-7. Logging module
-8. Eval set expansion
-9. Answer quality scoring (LLM-as-judge)
-10. Pipeline versioning + experiment runner
+## Current priority order
+1. Pipeline versioning: config-based experiment runner
+2. Regression testing: compare chunking v1 vs v2 on eval set
+3. Docker setup
+4. README with architecture diagram
+5. Web UI (optional lightweight frontend)
 
 ## Notes
 - Work on one item per session

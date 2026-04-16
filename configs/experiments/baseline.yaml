@@ -1,0 +1,15 @@
+experiment:
+  name: baseline-eval
+  pipeline_version: phase3-pipeline-versioning-v1
+  description: Baseline experiment config for the sample evaluation pipeline.
+
+retrieval:
+  embedding_model: all-MiniLM-L6-v2
+
+answering:
+  generator: simple
+  judge: mock
+
+evaluation:
+  top_k: 5
+  use_answer_quality_judge: true
