@@ -21,7 +21,7 @@
 - [x] Eval set expansion (30-50 QA pairs)
   - [x] Sub-task 1: expand the synthetic sample-paper eval set from 6 to 18 QA pairs
   - [x] Sub-task 2: add additional papers / QA coverage to reach 30-50 total QA pairs
-- [ ] Answer quality scoring (LLM-as-judge)
+- [x] Answer quality scoring (LLM-as-judge)
 
 ## Phase 3 — Production Polish
 - [ ] Pipeline versioning: config-based experiment runner

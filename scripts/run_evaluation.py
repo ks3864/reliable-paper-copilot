@@ -13,7 +13,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from data.eval.eval_set import SAMPLE_PAPER_CHUNKS, EVAL_QA_PAIRS, save_eval_set
 from src.retrieval import create_retriever
 from src.answering import SimpleAnswerGenerator
-from src.evaluation import evaluate_all
+from src.evaluation import AnswerQualityJudge, create_mock_judge_callable, evaluate_all
 
 
 def main():
@@ -53,7 +53,8 @@ def main():
     print("EVALUATION RESULTS")
     print("=" * 60)
     
-    eval_results = evaluate_all(results, EVAL_QA_PAIRS)
+    judge = AnswerQualityJudge(create_mock_judge_callable())
+    eval_results = evaluate_all(results, EVAL_QA_PAIRS, judge=judge)
     
     print("\nAggregate Metrics:")
     agg = eval_results["aggregate"]
@@ -61,10 +62,18 @@ def main():
     print(f"  F1 Score:         {agg['f1']:.2%}")
     print(f"  Retrieval Hit:    {agg['retrieval_hit']:.2%}")
     print(f"  Retrieval MRR:    {agg['retrieval_mrr']:.2%}")
+    print(f"  Groundedness:     {agg['groundedness']:.2%}")
+    print(f"  Correctness:      {agg['correctness']:.2%}")
+    print(f"  Completeness:     {agg['completeness']:.2%}")
+    print(f"  Answer Quality:   {agg['answer_quality']:.2%}")
     
     print("\nPer-Question Breakdown:")
     for m in eval_results["per_question"]:
-        print(f"  [{m['question_id']}] EM={m['exact_match']:.2f} F1={m['f1']:.2f} Hit={m['retrieval_hit']:.2f} MRR={m['retrieval_mrr']:.2f}")
+        print(
+            f"  [{m['question_id']}] EM={m['exact_match']:.2f} F1={m['f1']:.2f} "
+            f"Hit={m['retrieval_hit']:.2f} MRR={m['retrieval_mrr']:.2f} "
+            f"AQ={m['answer_quality']:.2f}"
+        )
     
     return eval_results
 

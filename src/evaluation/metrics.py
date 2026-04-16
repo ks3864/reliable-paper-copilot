@@ -1,6 +1,6 @@
 """Evaluation Metrics Module."""
 
-from typing import List, Dict, Any, Set
+from typing import List, Dict, Any
 import re
 
 
@@ -79,7 +79,11 @@ def retrieval_mrr(
     return 0.0
 
 
-def evaluate_qa_pair(result: Dict[str, Any], qa_pair: Dict[str, Any]) -> Dict[str, float]:
+def evaluate_qa_pair(
+    result: Dict[str, Any],
+    qa_pair: Dict[str, Any],
+    judge=None,
+) -> Dict[str, float]:
     """
     Evaluate a single QA pair result.
     
@@ -104,12 +108,16 @@ def evaluate_qa_pair(result: Dict[str, Any], qa_pair: Dict[str, Any]) -> Dict[st
             qa_pair.get("source"),
         )
     }
+
+    if judge is not None:
+        metrics.update(judge.score(result, qa_pair))
     
     return metrics
 
 
 def evaluate_all(results: List[Dict[str, Any]], 
-                 qa_pairs: List[Dict[str, Any]]) -> Dict[str, Any]:
+                 qa_pairs: List[Dict[str, Any]],
+                 judge=None) -> Dict[str, Any]:
     """
     Evaluate all QA pair results and compute aggregate metrics.
     """
@@ -118,7 +126,7 @@ def evaluate_all(results: List[Dict[str, Any]],
     
     individual_metrics = []
     for result, qa_pair in zip(results, qa_pairs):
-        metrics = evaluate_qa_pair(result, qa_pair)
+        metrics = evaluate_qa_pair(result, qa_pair, judge=judge)
         metrics["question_id"] = qa_pair["id"]
         individual_metrics.append(metrics)
     
@@ -129,6 +137,14 @@ def evaluate_all(results: List[Dict[str, Any]],
         "retrieval_hit": sum(m["retrieval_hit"] for m in individual_metrics) / len(individual_metrics),
         "retrieval_mrr": sum(m["retrieval_mrr"] for m in individual_metrics) / len(individual_metrics),
     }
+
+    optional_metrics = ["groundedness", "correctness", "completeness", "answer_quality"]
+    for metric_name in optional_metrics:
+        if any(metric_name in m for m in individual_metrics):
+            aggregate[metric_name] = (
+                sum(m.get(metric_name, 0.0) for m in individual_metrics) / len(individual_metrics)
+            )
+    
     
     return {
         "aggregate": aggregate,

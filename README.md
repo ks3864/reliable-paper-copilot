@@ -9,6 +9,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **Embedding-Based Retrieval**: Find relevant passages using FAISS vector search
 - **Cross-Encoder Reranking**: Reorder retrieved passages with a higher-precision reranker
 - **Grounded Generation**: Answer questions with citations from the paper
+- **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
 
 ## Quick Start
 
@@ -47,6 +48,23 @@ reliable-paper-copilot/
 ├── tests/           # Unit tests
 └── docker/          # Docker configuration
 ```
+
+## Evaluation
+
+```bash
+python scripts/run_evaluation.py
+```
+
+The evaluation runner now reports both classic QA metrics and an answer-quality rubric:
+- exact match
+- token F1
+- retrieval hit rate / MRR
+- groundedness
+- correctness
+- completeness
+- overall answer quality
+
+The current implementation uses a pluggable judge interface, with a deterministic mock judge for local testing.
 
 ## Phase 1 MVP
 
