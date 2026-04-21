@@ -15,7 +15,7 @@ from ..parsing import parse_pdf, save_parsed
 from ..chunking import chunk_by_sections, save_chunks
 from ..retrieval import Retriever, create_retriever
 from ..answering import SimpleAnswerGenerator
-from ..storage import PaperRegistry
+from ..storage import PaperRegistry, build_ingestion_notes, build_provenance_metadata, build_summary_metadata
 from ..utils import RequestLogger, compute_file_hash
 from .web import WEB_UI_HTML
 
@@ -51,6 +51,15 @@ class PaperStatus(BaseModel):
     status: str
     num_chunks: int
     artifact_validation: Optional[Dict[str, Any]] = None
+    ingestion_notes: List[str] = []
+    operator_ingestion_notes: List[str] = []
+    provenance: Optional[Dict[str, Any]] = None
+    summary_metadata: Optional[Dict[str, Any]] = None
+
+
+class PaperMetadataUpdateRequest(BaseModel):
+    operator_ingestion_notes: Optional[List[str]] = None
+    provenance: Optional[Dict[str, Any]] = None
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -127,10 +136,13 @@ async def upload_paper(file: UploadFile = File(...)):
         index_dir = Path("data/indexes")
         index_dir.mkdir(parents=True, exist_ok=True)
         index_path = index_dir / f"{paper_id}_index.faiss"
+        index_persisted = False
         if retriever.index is not None and not retriever.use_lexical_fallback:
             retriever.save(str(index_path), str(chunks_path))
+            index_persisted = True
 
         created_at = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        file_hash = compute_file_hash(str(raw_pdf_path))
         record = {
             "paper_id": paper_id,
             "title": parsed["metadata"].get("title", "Unknown"),
@@ -143,8 +155,16 @@ async def upload_paper(file: UploadFile = File(...)):
             "num_chunks": len(chunks),
             "page_count": parsed["metadata"].get("page_count", 0),
             "file_size_bytes": len(content),
-            "file_hash": compute_file_hash(str(raw_pdf_path)),
+            "file_hash": file_hash,
             "created_at": created_at,
+            "ingestion_notes": build_ingestion_notes(parsed, chunks, index_persisted=index_persisted),
+            "operator_ingestion_notes": [],
+            "provenance": build_provenance_metadata(
+                original_filename=file.filename,
+                file_hash=file_hash,
+                created_at=created_at,
+            ),
+            "summary_metadata": build_summary_metadata(parsed, chunks),
         }
         PAPER_REGISTRY.upsert_paper(record)
         persisted_record = PAPER_REGISTRY.get_paper(paper_id) or record
@@ -157,6 +177,10 @@ async def upload_paper(file: UploadFile = File(...)):
             status=persisted_record["status"],
             num_chunks=persisted_record["num_chunks"],
             artifact_validation=persisted_record.get("artifact_validation"),
+            ingestion_notes=persisted_record.get("ingestion_notes", []),
+            operator_ingestion_notes=persisted_record.get("operator_ingestion_notes", []),
+            provenance=persisted_record.get("provenance"),
+            summary_metadata=persisted_record.get("summary_metadata"),
         )
         
     except Exception as e:
@@ -244,6 +268,42 @@ async def get_paper_status(paper_id: str):
         status=paper.get("status", "unknown"),
         num_chunks=paper.get("num_chunks", 0),
         artifact_validation=paper.get("artifact_validation"),
+        ingestion_notes=paper.get("ingestion_notes", []),
+        operator_ingestion_notes=paper.get("operator_ingestion_notes", []),
+        provenance=paper.get("provenance"),
+        summary_metadata=paper.get("summary_metadata"),
+    )
+
+
+@app.patch("/papers/{paper_id}/metadata", response_model=PaperStatus)
+async def update_paper_metadata(paper_id: str, request: PaperMetadataUpdateRequest):
+    """Update operator-managed notes and provenance metadata for a paper."""
+    updated = PAPER_REGISTRY.update_operator_metadata(
+        paper_id,
+        operator_ingestion_notes=request.operator_ingestion_notes,
+        provenance=request.provenance,
+    )
+    if updated is None:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    cached = PAPERS.get(paper_id)
+    if cached is not None:
+        cached.update(
+            operator_ingestion_notes=updated.get("operator_ingestion_notes", []),
+            provenance=updated.get("provenance"),
+            artifact_validation=updated.get("artifact_validation"),
+        )
+
+    return PaperStatus(
+        paper_id=updated["paper_id"],
+        title=updated.get("title"),
+        status=updated.get("status", "unknown"),
+        num_chunks=updated.get("num_chunks", 0),
+        artifact_validation=updated.get("artifact_validation"),
+        ingestion_notes=updated.get("ingestion_notes", []),
+        operator_ingestion_notes=updated.get("operator_ingestion_notes", []),
+        provenance=updated.get("provenance"),
+        summary_metadata=updated.get("summary_metadata"),
     )
 
 
@@ -267,6 +327,10 @@ async def list_papers():
                 "file_size_bytes": paper.get("file_size_bytes", 0),
                 "created_at": paper.get("created_at"),
                 "artifact_validation": paper.get("artifact_validation"),
+                "ingestion_notes": paper.get("ingestion_notes", []),
+                "operator_ingestion_notes": paper.get("operator_ingestion_notes", []),
+                "provenance": paper.get("provenance"),
+                "summary_metadata": paper.get("summary_metadata"),
             }
             for paper in papers
         ],

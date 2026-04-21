@@ -41,6 +41,9 @@
   - [x] Sub-task 1: add a persistent paper registry and registry-backed API paper loading/listing across restarts
   - [x] Sub-task 2: extend ingestion/registry metadata with artifact validation summaries and file size metadata
   - [ ] Sub-task 3: add richer real-paper metadata fields, such as ingestion notes and extracted summary metadata
+    - [x] Sub-task 3a: persist extractor-derived study summary fields and ingestion-note hints in registry metadata
+    - [x] Sub-task 3b: add paper-level operator-editable ingestion notes and provenance fields
+    - [ ] Sub-task 3c: surface richer paper metadata more clearly in the web UI
 - [ ] Add hybrid retrieval (BM25 + dense retrieval fusion)
 - [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
@@ -53,7 +56,7 @@
 
 ## Current priority order
 1. Add support for multiple real scientific PDFs with persistent paper registry metadata
-   - Next sub-task: add richer real-paper metadata fields, such as ingestion notes and extracted summary metadata
+   - Next sub-task: surface richer paper metadata more clearly in the web UI
 2. Add hybrid retrieval (BM25 + dense retrieval fusion)
 3. Add citation span highlighting and page-aware evidence formatting in API/UI responses
 4. Add answerable-vs-unanswerable evaluation slice and refusal metrics
