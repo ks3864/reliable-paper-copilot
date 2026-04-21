@@ -18,6 +18,16 @@ class WebUITests(unittest.TestCase):
         self.assertIn("Reliable Scientific Paper Copilot", response.text)
         self.assertIn("Upload a PDF", response.text)
         self.assertIn("Ask a question", response.text)
+        self.assertIn("Selected paper details", response.text)
+
+    def test_web_ui_surfaces_richer_paper_metadata_sections(self):
+        response = self.client.get("/")
+
+        self.assertIn("Automated ingestion notes", response.text)
+        self.assertIn("Operator notes", response.text)
+        self.assertIn("Abstract preview", response.text)
+        self.assertIn("Extracted datasets", response.text)
+        self.assertIn("function updatePaperDetails", response.text)
 
     def test_web_ui_references_existing_api_routes(self):
         response = self.client.get("/")
@@ -26,6 +36,7 @@ class WebUITests(unittest.TestCase):
         self.assertIn('fetch("/ask"', response.text)
         self.assertIn('fetch("/papers"', response.text)
         self.assertIn('fetch("/health"', response.text)
+        self.assertIn('paperSelect.addEventListener("change"', response.text)
 
 
 if __name__ == "__main__":

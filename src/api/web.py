@@ -102,6 +102,52 @@ WEB_UI_HTML = dedent(
           padding: 16px;
           border: 1px solid #e5e7eb;
         }
+        .paper-details {
+          margin-top: 16px;
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          background: #f9fafb;
+        }
+        .detail-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+          gap: 12px;
+          margin-bottom: 16px;
+        }
+        .detail-card {
+          background: white;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 12px;
+        }
+        .detail-card h4 {
+          margin: 0 0 8px 0;
+          font-size: 0.95rem;
+        }
+        .detail-card p,
+        .detail-card li {
+          margin: 0;
+          font-size: 0.95rem;
+        }
+        .detail-list {
+          margin: 8px 0 0 0;
+          padding-left: 18px;
+        }
+        .chips {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+        }
+        .chip {
+          display: inline-flex;
+          align-items: center;
+          border-radius: 999px;
+          padding: 4px 10px;
+          font-size: 0.85rem;
+          background: #e0e7ff;
+          color: #3730a3;
+        }
         ul {
           padding-left: 20px;
         }
@@ -138,6 +184,12 @@ WEB_UI_HTML = dedent(
         <section class="panel">
           <h2>2. Ask a question</h2>
           <form id="ask-form">
+            <div id="paper-details" class="paper-details" hidden>
+              <h3>Selected paper details</h3>
+              <div id="paper-summary" class="detail-grid"></div>
+              <div id="paper-signals" class="detail-grid"></div>
+              <div id="paper-notes" class="detail-grid"></div>
+            </div>
             <div>
               <label for="paper-id">Paper</label>
               <select id="paper-id" required>
@@ -169,19 +221,115 @@ WEB_UI_HTML = dedent(
         const askButton = document.getElementById("ask-button");
         const askStatus = document.getElementById("ask-status");
         const paperSelect = document.getElementById("paper-id");
+        const paperDetails = document.getElementById("paper-details");
+        const paperSummary = document.getElementById("paper-summary");
+        const paperSignals = document.getElementById("paper-signals");
+        const paperNotes = document.getElementById("paper-notes");
         const answerPanel = document.getElementById("answer-panel");
         const answerEl = document.getElementById("answer");
         const sourcesEl = document.getElementById("sources");
+        let paperRecords = [];
 
         function setStatus(element, message, kind = "muted") {
           element.textContent = message;
           element.className = `status ${kind}`;
         }
 
+        function formatFileSize(bytes) {
+          if (!bytes) {
+            return "Unknown";
+          }
+          if (bytes < 1024) {
+            return `${bytes} B`;
+          }
+          if (bytes < 1024 * 1024) {
+            return `${(bytes / 1024).toFixed(1)} KB`;
+          }
+          return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function renderDetailCard(title, body) {
+          return `<section class="detail-card"><h4>${title}</h4>${body}</section>`;
+        }
+
+        function renderList(items, emptyMessage = "None") {
+          if (!items || !items.length) {
+            return `<p class="muted">${emptyMessage}</p>`;
+          }
+          return `<ul class="detail-list">${items.map((item) => `<li>${item}</li>`).join("")}</ul>`;
+        }
+
+        function renderChips(items, emptyMessage = "None detected") {
+          if (!items || !items.length) {
+            return `<p class="muted">${emptyMessage}</p>`;
+          }
+          return `<div class="chips">${items.map((item) => `<span class="chip">${item}</span>`).join("")}</div>`;
+        }
+
+        function updatePaperDetails(paperId) {
+          const paper = paperRecords.find((item) => item.paper_id === paperId);
+          if (!paper) {
+            paperDetails.hidden = true;
+            paperSummary.innerHTML = "";
+            paperSignals.innerHTML = "";
+            paperNotes.innerHTML = "";
+            return;
+          }
+
+          const summary = paper.summary_metadata || {};
+          const extracted = summary.extracted_summary || {};
+          const artifactValidation = paper.artifact_validation || {};
+          const provenance = paper.provenance || {};
+          const missingArtifacts = artifactValidation.missing_required || [];
+          const chunkingStrategies = Object.entries(summary.chunking_strategies || {}).map(([name, count]) => `${name}: ${count}`);
+
+          paperSummary.innerHTML = [
+            renderDetailCard("Paper summary", `
+              <p><strong>Title:</strong> ${paper.title || "Unknown"}</p>
+              <p><strong>Pages:</strong> ${paper.page_count || 0}</p>
+              <p><strong>Chunks:</strong> ${paper.num_chunks || 0}</p>
+              <p><strong>File size:</strong> ${formatFileSize(paper.file_size_bytes)}</p>
+            `),
+            renderDetailCard("Provenance", `
+              <p><strong>Source label:</strong> ${provenance.source_label || paper.original_filename || "Unknown"}</p>
+              <p><strong>Uploaded via:</strong> ${provenance.uploaded_via || "Unknown"}</p>
+              <p><strong>Created:</strong> ${paper.created_at || "Unknown"}</p>
+              <p><strong>Artifact status:</strong> ${artifactValidation.all_required_present ? "All required artifacts present" : `Missing ${missingArtifacts.join(", ") || "required artifacts"}`}</p>
+            `),
+            renderDetailCard("Abstract preview", summary.abstract_preview ? `<p>${summary.abstract_preview}</p>` : '<p class="muted">No abstract preview extracted.</p>'),
+          ].join("");
+
+          paperSignals.innerHTML = [
+            renderDetailCard("Extracted datasets", renderChips(extracted.datasets, "No datasets detected")),
+            renderDetailCard("Sample sizes", renderChips((extracted.sample_sizes || []).map(String), "No sample sizes detected")),
+            renderDetailCard("Sections and chunking", `
+              <p><strong>Sections:</strong> ${summary.section_count || 0}</p>
+              ${renderChips(summary.section_names, "No sections detected")}
+              <div style="margin-top: 10px;">${renderChips(chunkingStrategies, "No chunking metadata")}</div>
+            `),
+            renderDetailCard("Study signals", `
+              <p><strong>Limitations</strong></p>
+              ${renderList(extracted.limitations, "No limitations extracted")}
+              <p style="margin-top: 10px;"><strong>Inclusion criteria</strong></p>
+              ${renderList(extracted.inclusion_criteria, "No inclusion criteria extracted")}
+              <p style="margin-top: 10px;"><strong>Exclusion criteria</strong></p>
+              ${renderList(extracted.exclusion_criteria, "No exclusion criteria extracted")}
+            `),
+          ].join("");
+
+          paperNotes.innerHTML = [
+            renderDetailCard("Automated ingestion notes", renderList(paper.ingestion_notes, "No ingestion notes recorded")),
+            renderDetailCard("Operator notes", renderList(paper.operator_ingestion_notes, "No operator notes added yet")),
+          ].join("");
+
+          paperDetails.hidden = false;
+        }
+
         async function refreshPapers(selectedPaperId = "") {
           const response = await fetch("/papers");
           const payload = await response.json();
           const papers = payload.papers || [];
+          paperRecords = papers;
 
           paperSelect.innerHTML = '<option value="">Select an uploaded paper</option>';
           for (const paper of papers) {
@@ -193,6 +341,8 @@ WEB_UI_HTML = dedent(
             }
             paperSelect.appendChild(option);
           }
+
+          updatePaperDetails(selectedPaperId || paperSelect.value);
         }
 
         async function checkHealth() {
@@ -204,6 +354,10 @@ WEB_UI_HTML = dedent(
             healthStatus.textContent = "unreachable";
           }
         }
+
+        paperSelect.addEventListener("change", (event) => {
+          updatePaperDetails(event.target.value);
+        });
 
         uploadForm.addEventListener("submit", async (event) => {
           event.preventDefault();
