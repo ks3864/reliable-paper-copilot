@@ -50,6 +50,8 @@
   - [x] Sub-task 3: upgrade lexical retrieval from token overlap to BM25 scoring for stronger hybrid fusion
   - [x] Sub-task 4: expose hybrid retrieval controls and score breakdowns in the web UI for demos/debugging
 - [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
+  - [x] Sub-task 1: add page-aware structured evidence objects to chunk metadata, /ask responses, and the web UI evidence panel
+  - [ ] Sub-task 2: add answer-level citation span anchors/highlighting tied to evidence chunks in the UI
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
 - [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
 - [ ] Add ingestion smoke tests and end-to-end API tests

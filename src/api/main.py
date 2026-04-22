@@ -54,6 +54,21 @@ class RetrievedChunkScore(BaseModel):
     lexical_rank: Optional[int] = None
 
 
+class EvidenceItem(BaseModel):
+    chunk_id: Optional[int] = None
+    section: str
+    text: str
+    page_numbers: List[int] = []
+    page_start: Optional[int] = None
+    page_end: Optional[int] = None
+    page_label: Optional[str] = None
+    retrieval_score: float
+    dense_score: Optional[float] = None
+    lexical_score: Optional[float] = None
+    hybrid_score: Optional[float] = None
+    rank: Optional[int] = None
+
+
 class QuestionResponse(BaseModel):
     question: str
     answer: str
@@ -61,6 +76,7 @@ class QuestionResponse(BaseModel):
     num_chunks_retrieved: int
     retrieval_mode: str
     retrieval_scores: List[RetrievedChunkScore]
+    evidence: List[EvidenceItem]
 
 
 class PaperStatus(BaseModel):
@@ -96,6 +112,35 @@ def _hydrate_paper_cache(paper: Dict[str, Any]) -> Dict[str, Any]:
 def _load_saved_chunks(chunks_path: str) -> List[Dict[str, Any]]:
     with Path(chunks_path).open("r", encoding="utf-8") as handle:
         return json.load(handle).get("chunks", [])
+
+
+def _format_page_label(page_numbers: List[int]) -> Optional[str]:
+    if not page_numbers:
+        return None
+    if len(page_numbers) == 1:
+        return f"p. {page_numbers[0]}"
+    return f"pp. {page_numbers[0]}-{page_numbers[-1]}"
+
+
+def _build_evidence_item(chunk: Dict[str, Any]) -> EvidenceItem:
+    metadata = chunk.get("metadata") or {}
+    page_numbers = [int(page) for page in metadata.get("page_numbers", []) if page is not None]
+    snippet = (chunk.get("text") or "").strip()
+
+    return EvidenceItem(
+        chunk_id=chunk.get("chunk_id"),
+        section=chunk.get("section", "unknown"),
+        text=snippet,
+        page_numbers=page_numbers,
+        page_start=metadata.get("page_start"),
+        page_end=metadata.get("page_end"),
+        page_label=_format_page_label(page_numbers),
+        retrieval_score=float(chunk.get("retrieval_score", 0.0)),
+        dense_score=chunk.get("dense_score"),
+        lexical_score=chunk.get("lexical_score"),
+        hybrid_score=chunk.get("hybrid_score"),
+        rank=chunk.get("rank"),
+    )
 
 
 def _get_retriever_for_request(paper: Dict[str, Any], request: QuestionRequest) -> Retriever:
@@ -298,6 +343,7 @@ async def ask_question(request: QuestionRequest):
         sources=result["sources"],
         num_chunks_retrieved=result["num_chunks_retrieved"],
         retrieval_mode=retriever.retrieval_mode,
+        evidence=[_build_evidence_item(chunk) for chunk in result.get("retrieved_chunks", [])],
         retrieval_scores=[
             RetrievedChunkScore(
                 chunk_id=chunk.get("chunk_id"),

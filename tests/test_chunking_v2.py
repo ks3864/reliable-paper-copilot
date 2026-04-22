@@ -57,6 +57,23 @@ class ChunkingV2Tests(unittest.TestCase):
         self.assertIn("token14 token15 token16 token17", token_chunks[0]["text"])
         self.assertIn("token14 token15 token16 token17", token_chunks[1]["text"])
 
+    def test_chunk_metadata_includes_page_spans(self):
+        parsed = {
+            "metadata": {"title": "Paged Paper"},
+            "pages": [
+                {"page_number": 1, "text": "Introduction\n\nThis is page one context."},
+                {"page_number": 2, "text": "This is page two context that continues the discussion."},
+            ],
+        }
+
+        chunks = chunk_by_sections(parsed, max_chunk_size=500, max_tokens=500)
+
+        self.assertEqual(len(chunks), 1)
+        metadata = chunks[0]["metadata"]
+        self.assertEqual(metadata["page_numbers"], [1, 2])
+        self.assertEqual(metadata["page_start"], 1)
+        self.assertEqual(metadata["page_end"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()

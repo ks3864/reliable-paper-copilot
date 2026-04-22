@@ -29,7 +29,9 @@ class WebUITests(unittest.TestCase):
         self.assertIn("Operator notes", response.text)
         self.assertIn("Abstract preview", response.text)
         self.assertIn("Extracted datasets", response.text)
+        self.assertIn("Evidence", response.text)
         self.assertIn("function updatePaperDetails", response.text)
+        self.assertIn("function renderEvidence", response.text)
 
     def test_web_ui_references_existing_api_routes(self):
         response = self.client.get("/")

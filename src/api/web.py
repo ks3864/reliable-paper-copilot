@@ -136,6 +136,29 @@ WEB_UI_HTML = dedent(
           display: inline-block;
           margin-top: 4px;
         }
+        .evidence-list {
+          display: grid;
+          gap: 12px;
+          margin-top: 12px;
+        }
+        .evidence-card {
+          background: #f9fafb;
+          border: 1px solid #e5e7eb;
+          border-radius: 12px;
+          padding: 12px;
+        }
+        .evidence-card-header {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-bottom: 8px;
+          align-items: center;
+        }
+        .evidence-snippet {
+          white-space: pre-wrap;
+          margin: 0;
+          line-height: 1.5;
+        }
         .paper-details {
           margin-top: 16px;
           padding: 16px;
@@ -268,6 +291,8 @@ WEB_UI_HTML = dedent(
             <div id="answer" class="answer"></div>
             <h3>Sources</h3>
             <ul id="sources"></ul>
+            <h3>Evidence</h3>
+            <div id="evidence" class="evidence-list"></div>
             <h3>Retrieval score breakdown</h3>
             <div id="retrieval-meta" class="muted"></div>
             <table id="retrieval-scores-table" class="score-table">
@@ -300,6 +325,7 @@ WEB_UI_HTML = dedent(
         const answerPanel = document.getElementById("answer-panel");
         const answerEl = document.getElementById("answer");
         const sourcesEl = document.getElementById("sources");
+        const evidenceEl = document.getElementById("evidence");
         const retrievalMetaEl = document.getElementById("retrieval-meta");
         const retrievalScoresEl = document.getElementById("retrieval-scores");
         let paperRecords = [];
@@ -345,6 +371,30 @@ WEB_UI_HTML = dedent(
             return "n/a";
           }
           return Number(value).toFixed(4);
+        }
+
+        function renderEvidence(payload) {
+          const evidence = payload.evidence || [];
+
+          if (!evidence.length) {
+            evidenceEl.innerHTML = '<p class="muted">No structured evidence returned.</p>';
+            return;
+          }
+
+          evidenceEl.innerHTML = evidence.map((item) => {
+            const location = item.page_label || (item.page_numbers && item.page_numbers.length ? `pages ${item.page_numbers.join(", ")}` : "page unknown");
+            return `
+              <article class="evidence-card">
+                <div class="evidence-card-header">
+                  <strong>${item.section || "unknown"}</strong>
+                  <span class="chip">${location}</span>
+                  <code>chunk ${item.chunk_id ?? "?"}</code>
+                  <span class="muted">score ${formatScore(item.retrieval_score)}</span>
+                </div>
+                <p class="evidence-snippet">${item.text || ""}</p>
+              </article>
+            `;
+          }).join("");
         }
 
         function renderRetrievalScores(payload) {
@@ -540,6 +590,7 @@ WEB_UI_HTML = dedent(
 
             answerEl.textContent = payload.answer;
             sourcesEl.innerHTML = "";
+            renderEvidence(payload);
             renderRetrievalScores(payload);
             for (const source of payload.sources || []) {
               const item = document.createElement("li");

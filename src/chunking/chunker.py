@@ -108,8 +108,19 @@ def chunk_by_sections(
     chunk_id = 0
 
     full_text = ""
+    page_spans: List[Dict[str, int]] = []
     for page in parsed_data["pages"]:
-        full_text += page["text"] + "\n\n"
+        page_text = page.get("text", "")
+        start_pos = len(full_text)
+        full_text += page_text + "\n\n"
+        end_pos = len(full_text)
+        page_spans.append(
+            {
+                "page_number": int(page.get("page_number", 0) or 0),
+                "start_pos": start_pos,
+                "end_pos": end_pos,
+            }
+        )
 
     sections = detect_sections(full_text)
     source_title = parsed_data.get("metadata", {}).get("title", "unknown")
@@ -127,6 +138,9 @@ def chunk_by_sections(
                     text=section_text,
                     source=source_title,
                     strategy="section",
+                    start_pos=section["start_pos"],
+                    end_pos=section["end_pos"],
+                    page_spans=page_spans,
                 )
             )
             chunk_id += 1
@@ -141,6 +155,8 @@ def chunk_by_sections(
             max_tokens=max_tokens,
             overlap_tokens=overlap_tokens,
             source=source_title,
+            section_start_pos=section["start_pos"],
+            page_spans=page_spans,
         )
         chunks.extend(section_chunks)
         chunk_id += len(section_chunks)
@@ -161,15 +177,24 @@ def _build_chunk(
     text: str,
     source: str,
     strategy: str,
+    start_pos: int,
+    end_pos: int,
+    page_spans: Optional[List[Dict[str, int]]] = None,
     metadata_overrides: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     clean_text = text.strip()
+    pages = _pages_for_span(start_pos, end_pos, page_spans or [])
     metadata = {
         "source": source,
         "char_count": len(clean_text),
         "word_count": len(clean_text.split()),
         "token_count_estimate": estimate_token_count(clean_text),
         "chunking_strategy": strategy,
+        "start_char": start_pos,
+        "end_char": end_pos,
+        "page_numbers": pages,
+        "page_start": pages[0] if pages else None,
+        "page_end": pages[-1] if pages else None,
     }
     if metadata_overrides:
         metadata.update(metadata_overrides)
@@ -191,6 +216,8 @@ def _split_large_section(
     max_tokens: int,
     overlap_tokens: int,
     source: str,
+    section_start_pos: int,
+    page_spans: List[Dict[str, int]],
 ) -> List[Dict[str, Any]]:
     """Split a large section into overlapping chunks, then fall back to token windows when needed."""
     chunks: List[Dict[str, Any]] = []
@@ -217,6 +244,9 @@ def _split_large_section(
                 max_tokens=max_tokens,
                 overlap_tokens=overlap_tokens,
                 source=source,
+                chunk_start_pos=text.find(chunk_text),
+                section_start_pos=section_start_pos,
+                page_spans=page_spans,
             )
             chunks.extend(emitted)
             chunk_id += len(emitted)
@@ -234,6 +264,9 @@ def _split_large_section(
                 max_tokens=max_tokens,
                 overlap_tokens=overlap_tokens,
                 source=source,
+                chunk_start_pos=text.find(para),
+                section_start_pos=section_start_pos,
+                page_spans=page_spans,
             )
             chunks.extend(emitted)
             chunk_id += len(emitted)
@@ -249,6 +282,9 @@ def _split_large_section(
             max_tokens=max_tokens,
             overlap_tokens=overlap_tokens,
             source=source,
+            chunk_start_pos=text.rfind("\n\n".join(current_parts)),
+            section_start_pos=section_start_pos,
+            page_spans=page_spans,
         )
         chunks.extend(emitted)
 
@@ -264,6 +300,9 @@ def _emit_chunk_with_fallback(
     max_tokens: int,
     overlap_tokens: int,
     source: str,
+    chunk_start_pos: int,
+    section_start_pos: int,
+    page_spans: List[Dict[str, int]],
 ) -> List[Dict[str, Any]]:
     clean_text = text.strip()
     if not clean_text:
@@ -277,6 +316,9 @@ def _emit_chunk_with_fallback(
                 text=clean_text,
                 source=source,
                 strategy="section_overlap",
+                start_pos=section_start_pos + max(chunk_start_pos, 0),
+                end_pos=section_start_pos + max(chunk_start_pos, 0) + len(clean_text),
+                page_spans=page_spans,
                 metadata_overrides={
                     "overlap_chars": min(overlap_size, len(clean_text)),
                     "overlap_tokens": overlap_tokens,
@@ -299,6 +341,9 @@ def _emit_chunk_with_fallback(
                 text=window,
                 source=source,
                 strategy="section_overlap",
+                start_pos=section_start_pos + max(clean_text.find(window), 0),
+                end_pos=section_start_pos + max(clean_text.find(window), 0) + len(window),
+                page_spans=page_spans,
                 metadata_overrides={
                     "overlap_chars": overlap_size,
                     "overlap_tokens": overlap_tokens,
@@ -315,6 +360,9 @@ def _emit_chunk_with_fallback(
             text=window,
             source=source,
             strategy="token_fallback",
+            start_pos=section_start_pos + max(clean_text.find(window), 0),
+            end_pos=section_start_pos + max(clean_text.find(window), 0) + len(window),
+            page_spans=page_spans,
             metadata_overrides={
                 "overlap_chars": overlap_size,
                 "overlap_tokens": overlap_tokens,
@@ -322,6 +370,14 @@ def _emit_chunk_with_fallback(
         )
         for offset, window in enumerate(token_windows)
     ]
+
+
+def _pages_for_span(start_pos: int, end_pos: int, page_spans: List[Dict[str, int]]) -> List[int]:
+    pages: List[int] = []
+    for span in page_spans:
+        if start_pos < span["end_pos"] and end_pos > span["start_pos"] and span["page_number"]:
+            pages.append(span["page_number"])
+    return pages
 
 
 def _tail_overlap_paragraphs(paragraphs: List[str], overlap_size: int) -> List[str]:
