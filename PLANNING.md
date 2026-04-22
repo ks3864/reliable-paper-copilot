@@ -60,14 +60,13 @@
   - [x] Sub-task 1: add upload and ingestion smoke coverage for artifact persistence and registry metadata
   - [x] Sub-task 2: add broader end-to-end API workflow coverage for upload -> ask -> status flows
 - [x] Add Makefile / task runner for common workflows (ingest, eval, run-api, run-ui, compare-experiments)
-- [ ] Add one polished demo notebook showing ingestion -> retrieval -> answer -> evaluation
+- [x] Add one polished demo notebook showing ingestion -> retrieval -> answer -> evaluation
 - [ ] Add sample real-paper package and reproducible demo instructions
 - [ ] Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Current priority order
-1. Add polished demo notebook
-2. Add sample real-paper package and reproducible demo instructions
-3. Add deployment notes for local + split-host browser-assisted workflows if needed
+1. Add sample real-paper package and reproducible demo instructions
+2. Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Notes
 - Work on one item per session
