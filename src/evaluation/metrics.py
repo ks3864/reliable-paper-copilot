@@ -172,9 +172,20 @@ def evaluate_all(results: List[Dict[str, Any]],
     unanswerable_metrics = [m for m in individual_metrics if m["is_answerable"] == 0.0]
 
     true_positives = sum(1 for m in individual_metrics if m["is_answerable"] == 0.0 and m["refused"] == 1.0)
+    false_positives = sum(1 for m in individual_metrics if m["is_answerable"] == 1.0 and m["refused"] == 1.0)
+    false_negatives = sum(1 for m in individual_metrics if m["is_answerable"] == 0.0 and m["refused"] == 0.0)
+    true_negatives = sum(1 for m in individual_metrics if m["is_answerable"] == 1.0 and m["refused"] == 0.0)
     predicted_refusals = sum(m["refused"] for m in individual_metrics)
     actual_unanswerable = len(unanswerable_metrics)
 
+    aggregate["answerable_count"] = len(answerable_metrics)
+    aggregate["unanswerable_count"] = len(unanswerable_metrics)
+    aggregate["refusal_true_positives"] = true_positives
+    aggregate["refusal_false_positives"] = false_positives
+    aggregate["refusal_false_negatives"] = false_negatives
+    aggregate["refusal_true_negatives"] = true_negatives
+    aggregate["false_refusal_rate"] = false_positives / len(answerable_metrics) if answerable_metrics else 0.0
+    aggregate["missed_refusal_rate"] = false_negatives / len(unanswerable_metrics) if unanswerable_metrics else 0.0
     aggregate["refusal_precision"] = true_positives / predicted_refusals if predicted_refusals else 0.0
     aggregate["refusal_recall"] = true_positives / actual_unanswerable if actual_unanswerable else 0.0
     precision = aggregate["refusal_precision"]
@@ -193,14 +204,17 @@ def evaluate_all(results: List[Dict[str, Any]],
     for slice_name, slice_values in (("answerable", answerable_metrics), ("unanswerable", unanswerable_metrics)):
         if not slice_values:
             continue
+        refusal_count = sum(m["refused"] for m in slice_values)
         slice_metrics[slice_name] = {
             "count": len(slice_values),
+            "share": len(slice_values) / len(individual_metrics),
             "exact_match": sum(m["exact_match"] for m in slice_values) / len(slice_values),
             "f1": sum(m["f1"] for m in slice_values) / len(slice_values),
             "retrieval_hit": sum(m["retrieval_hit"] for m in slice_values) / len(slice_values),
             "retrieval_mrr": sum(m["retrieval_mrr"] for m in slice_values) / len(slice_values),
-            "refusal_rate": sum(m["refused"] for m in slice_values) / len(slice_values),
+            "refusal_rate": refusal_count / len(slice_values),
             "refusal_accuracy": sum(m["refusal_match"] for m in slice_values) / len(slice_values),
+            "refusal_count": refusal_count,
         }
 
     return {

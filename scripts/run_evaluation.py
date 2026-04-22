@@ -70,6 +70,8 @@ def main():
     print(f"  Refusal Acc.:    {agg.get('refusal_accuracy', 0.0):.2%}")
     print(f"  Refusal Prec.:   {agg.get('refusal_precision', 0.0):.2%}")
     print(f"  Refusal Recall:  {agg.get('refusal_recall', 0.0):.2%}")
+    print(f"  False Refusal:   {agg.get('false_refusal_rate', 0.0):.2%}")
+    print(f"  Missed Refusal:  {agg.get('missed_refusal_rate', 0.0):.2%}")
     if 'groundedness' in agg:
         print(f"  Groundedness:    {agg['groundedness']:.2%}")
         print(f"  Correctness:     {agg['correctness']:.2%}")
@@ -89,14 +91,25 @@ def main():
         print(line)
 
     if eval_results.get("slices"):
-        print("\nSlice Breakdown:")
-        for slice_name, slice_metrics in eval_results["slices"].items():
+        print("\nAnswerability Slice Breakdown:")
+        for slice_name in ("answerable", "unanswerable"):
+            slice_metrics = eval_results["slices"].get(slice_name)
+            if not slice_metrics:
+                continue
             print(
-                f"  {slice_name}: count={slice_metrics['count']} "
+                f"  {slice_name.title():<14} count={slice_metrics['count']:<3} "
+                f"share={slice_metrics.get('share', 0.0):.2%} "
                 f"EM={slice_metrics['exact_match']:.2f} F1={slice_metrics['f1']:.2f} "
+                f"Hit={slice_metrics['retrieval_hit']:.2f} MRR={slice_metrics['retrieval_mrr']:.2f} "
                 f"RefusalRate={slice_metrics['refusal_rate']:.2f} "
                 f"RefusalAcc={slice_metrics['refusal_accuracy']:.2f}"
             )
+
+        print("\nRefusal Confusion Summary:")
+        print(f"  True refusals:   {agg.get('refusal_true_positives', 0)}")
+        print(f"  False refusals:  {agg.get('refusal_false_positives', 0)}")
+        print(f"  Missed refusals: {agg.get('refusal_false_negatives', 0)}")
+        print(f"  Correct answers: {agg.get('refusal_true_negatives', 0)}")
 
     return experiment_run
 

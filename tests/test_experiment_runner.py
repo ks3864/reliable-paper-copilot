@@ -130,8 +130,12 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
 
     summary_text = (output_dir / "summary.md").read_text(encoding="utf-8")
     assert "# Experiment Summary: baseline-eval" in summary_text
+    assert "## Overall Metrics" in summary_text
     assert "Pipeline version: phase3-pipeline-versioning-v1" in summary_text
     assert "Retrieval mode: dense" in summary_text
+    assert "## Answerability Slice Breakdown" in summary_text
+    assert "| Slice | Count | Share | Exact Match | F1 | Retrieval Hit | Retrieval MRR | Refusal Rate | Refusal Accuracy |" in summary_text
+    assert "## Refusal Confusion Summary" in summary_text
 
 
 def test_run_experiment_uses_hybrid_retrieval_settings_from_config(tmp_path):

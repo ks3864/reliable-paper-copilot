@@ -52,9 +52,9 @@
 - [x] Add citation span highlighting and page-aware evidence formatting in API/UI responses
   - [x] Sub-task 1: add page-aware structured evidence objects to chunk metadata, /ask responses, and the web UI evidence panel
   - [x] Sub-task 2: add answer-level citation span anchors/highlighting tied to evidence chunks in the UI
-- [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
+- [x] Add answerable-vs-unanswerable evaluation slice and refusal metrics
   - [x] Sub-task 1: add unanswerable eval examples plus core refusal and slice metrics in the evaluation pipeline
-  - [ ] Sub-task 2: surface answerable vs unanswerable results more clearly in benchmark/report outputs and docs
+  - [x] Sub-task 2: surface answerable vs unanswerable results more clearly in benchmark/report outputs and docs
 - [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
 - [ ] Add ingestion smoke tests and end-to-end API tests
 - [ ] Add Makefile / task runner for common workflows (ingest, eval, run-api, run-ui, compare-experiments)
@@ -63,13 +63,12 @@
 - [ ] Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Current priority order
-1. Add answerable-vs-unanswerable evaluation slice and refusal metrics
-2. Add benchmark report generation
-3. Add ingestion smoke tests and end-to-end API tests
-4. Add Makefile / task runner
-5. Add polished demo notebook
-6. Add sample real-paper package and reproducible demo instructions
-7. Add deployment notes for local + split-host browser-assisted workflows if needed
+1. Add benchmark report generation
+2. Add ingestion smoke tests and end-to-end API tests
+3. Add Makefile / task runner
+4. Add polished demo notebook
+5. Add sample real-paper package and reproducible demo instructions
+6. Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Notes
 - Work on one item per session

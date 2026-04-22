@@ -114,10 +114,14 @@ The evaluation runner now reports both classic QA metrics and an answer-quality 
 - exact match
 - token F1
 - retrieval hit rate / MRR
+- answerable vs unanswerable slice breakdowns
+- refusal accuracy, precision, recall, false-refusal rate, and missed-refusal rate
 - groundedness
 - correctness
 - completeness
 - overall answer quality
+
+Persisted experiment summaries now include an answerability slice table plus a refusal confusion summary, which makes it easier to spot whether the system is over-refusing answerable questions or failing to abstain on unanswerable ones.
 
 The current implementation uses a pluggable judge interface, with a deterministic mock judge for local testing.
 

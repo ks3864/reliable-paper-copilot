@@ -97,6 +97,7 @@ def _build_summary_text(experiment_run: Dict[str, Any]) -> str:
     lines = [
         f"# Experiment Summary: {experiment['name']}",
         "",
+        "## Overall Metrics",
         f"- Pipeline version: {experiment['pipeline_version']}",
         f"- Run ID: {experiment_run['run_id']}",
         f"- Retrieval mode: {retrieval.get('mode', 'dense')}",
@@ -110,18 +111,51 @@ def _build_summary_text(experiment_run: Dict[str, Any]) -> str:
         f"- Refusal accuracy: {aggregate.get('refusal_accuracy', 0.0):.2%}",
         f"- Refusal precision: {aggregate.get('refusal_precision', 0.0):.2%}",
         f"- Refusal recall: {aggregate.get('refusal_recall', 0.0):.2%}",
+        f"- False refusal rate on answerable questions: {aggregate.get('false_refusal_rate', 0.0):.2%}",
+        f"- Missed refusal rate on unanswerable questions: {aggregate.get('missed_refusal_rate', 0.0):.2%}",
     ]
 
     for metric_name in ("groundedness", "correctness", "completeness", "answer_quality"):
         if metric_name in aggregate:
             lines.append(f"- {metric_name.replace('_', ' ').title()}: {aggregate[metric_name]:.2%}")
 
-    for slice_name, slice_metrics in experiment_run["metrics"].get("slices", {}).items():
+    slices = experiment_run["metrics"].get("slices", {})
+    if slices:
         lines.extend(
             [
-                f"- {slice_name.title()} questions: {slice_metrics['count']}",
-                f"  - {slice_name.title()} refusal rate: {slice_metrics['refusal_rate']:.2%}",
-                f"  - {slice_name.title()} refusal accuracy: {slice_metrics['refusal_accuracy']:.2%}",
+                "",
+                "## Answerability Slice Breakdown",
+                "",
+                "| Slice | Count | Share | Exact Match | F1 | Retrieval Hit | Retrieval MRR | Refusal Rate | Refusal Accuracy |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for slice_name in ("answerable", "unanswerable"):
+            slice_metrics = slices.get(slice_name)
+            if not slice_metrics:
+                continue
+            lines.append(
+                "| {name} | {count} | {share:.2%} | {em:.2%} | {f1:.2%} | {hit:.2%} | {mrr:.2%} | {refusal_rate:.2%} | {refusal_accuracy:.2%} |".format(
+                    name=slice_name.title(),
+                    count=slice_metrics["count"],
+                    share=slice_metrics.get("share", 0.0),
+                    em=slice_metrics["exact_match"],
+                    f1=slice_metrics["f1"],
+                    hit=slice_metrics["retrieval_hit"],
+                    mrr=slice_metrics["retrieval_mrr"],
+                    refusal_rate=slice_metrics["refusal_rate"],
+                    refusal_accuracy=slice_metrics["refusal_accuracy"],
+                )
+            )
+
+        lines.extend(
+            [
+                "",
+                "## Refusal Confusion Summary",
+                f"- True refusals on unanswerable questions: {aggregate.get('refusal_true_positives', 0)}",
+                f"- False refusals on answerable questions: {aggregate.get('refusal_false_positives', 0)}",
+                f"- Missed refusals on unanswerable questions: {aggregate.get('refusal_false_negatives', 0)}",
+                f"- Correct non-refusals on answerable questions: {aggregate.get('refusal_true_negatives', 0)}",
             ]
         )
 
