@@ -626,6 +626,147 @@ class PaperRegistryApiTests(unittest.TestCase):
                 self.assertIn("lexical_score", payload["retrieval_scores"][0])
                 self.assertIsNone(api_main.PAPERS["paper-hybrid"].get("retriever"))
 
+    def test_end_to_end_api_workflow_covers_upload_ask_and_status(self):
+        class StubRetriever:
+            def __init__(self, chunks):
+                self.index = None
+                self.use_lexical_fallback = True
+                self.retrieval_mode = "dense"
+                self._chunks = chunks
+
+            def retrieve(self, query, top_k=5):
+                selected = []
+                for rank, chunk in enumerate(self._chunks[:top_k], start=1):
+                    hydrated = dict(chunk)
+                    hydrated["retrieval_score"] = 0.9 / rank
+                    hydrated["rank"] = rank
+                    selected.append(hydrated)
+                return selected
+
+        class StubGenerator:
+            def __init__(self, retriever):
+                self.retriever = retriever
+
+            def answer(self, question, top_k=5):
+                retrieved_chunks = self.retriever.retrieve(question, top_k=top_k)
+                return {
+                    "question": question,
+                    "answer": "The study uses the MIMIC-III dataset and enrolled 120 patients.",
+                    "sources": [chunk["section"] for chunk in retrieved_chunks],
+                    "retrieved_chunks": retrieved_chunks,
+                    "num_chunks_retrieved": len(retrieved_chunks),
+                    "confidence": {"has_good_match": True},
+                    "token_usage": {"prompt_tokens": 11, "completion_tokens": 7, "total_tokens": 18},
+                    "model_version": "stub-generator",
+                }
+
+        parsed = {
+            "metadata": {
+                "title": "End-to-End Workflow Paper",
+                "authors": ["Ada Lovelace"],
+                "abstract": "We evaluated the MIMIC-III dataset with 120 patients.",
+                "page_count": 2,
+            },
+            "pages": [
+                {
+                    "page_number": 1,
+                    "text": "Abstract\nWe evaluated the MIMIC-III dataset with 120 patients.",
+                    "tables": [],
+                    "word_count": 10,
+                },
+                {
+                    "page_number": 2,
+                    "text": "Results\nPerformance improved across cohorts.",
+                    "tables": [],
+                    "word_count": 8,
+                },
+            ],
+        }
+        chunks = [
+            {
+                "chunk_id": 0,
+                "section": "abstract",
+                "text": "We evaluated the MIMIC-III dataset with 120 patients.",
+                "metadata": {
+                    "source": "End-to-End Workflow Paper",
+                    "chunking_strategy": "section",
+                    "page_numbers": [1],
+                    "page_start": 1,
+                    "page_end": 1,
+                },
+            },
+            {
+                "chunk_id": 1,
+                "section": "results",
+                "text": "Performance improved across cohorts.",
+                "metadata": {
+                    "source": "End-to-End Workflow Paper",
+                    "chunking_strategy": "section",
+                    "page_numbers": [2],
+                    "page_start": 2,
+                    "page_end": 2,
+                },
+            },
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            request_logger = api_main.RequestLogger(tmp_path / "logs" / "requests.jsonl")
+
+            with temporary_cwd(tmp_path), patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
+                api_main, "PAPERS", {}
+            ), patch.object(api_main, "REQUEST_LOGGER", request_logger), patch.object(
+                api_main, "parse_pdf", return_value=parsed
+            ), patch.object(api_main, "chunk_by_sections", return_value=chunks), patch.object(
+                api_main, "create_retriever", side_effect=lambda prepared_chunks, **_: StubRetriever(prepared_chunks)
+            ), patch.object(api_main, "SimpleAnswerGenerator", StubGenerator):
+                client = TestClient(api_main.app)
+
+                upload_response = client.post(
+                    "/upload",
+                    files={"file": ("workflow-paper.pdf", b"%PDF-1.4\n%workflow pdf bytes\n", "application/pdf")},
+                )
+                self.assertEqual(upload_response.status_code, 200)
+                upload_payload = upload_response.json()
+                paper_id = upload_payload["paper_id"]
+                self.assertEqual(upload_payload["title"], "End-to-End Workflow Paper")
+                self.assertEqual(upload_payload["status"], "ready")
+                self.assertEqual(upload_payload["num_chunks"], 2)
+
+                ask_response = client.post(
+                    "/ask",
+                    json={"paper_id": paper_id, "question": "What dataset was used?", "top_k": 2},
+                )
+                self.assertEqual(ask_response.status_code, 200)
+                ask_payload = ask_response.json()
+                self.assertIn("MIMIC-III", ask_payload["answer"])
+                self.assertEqual(ask_payload["sources"], ["abstract", "results"])
+                self.assertEqual(ask_payload["num_chunks_retrieved"], 2)
+                self.assertEqual(ask_payload["retrieval_mode"], "dense")
+                self.assertEqual(ask_payload["evidence"][0]["page_label"], "p. 1")
+                self.assertEqual(ask_payload["answer_citations"][0]["chunk_id"], 0)
+
+                status_response = client.get(f"/papers/{paper_id}/status")
+                self.assertEqual(status_response.status_code, 200)
+                status_payload = status_response.json()
+                self.assertEqual(status_payload["paper_id"], paper_id)
+                self.assertEqual(status_payload["status"], "ready")
+                self.assertEqual(status_payload["summary_metadata"]["extracted_summary"]["datasets"], ["MIMIC-III"])
+
+                papers_response = client.get("/papers")
+                self.assertEqual(papers_response.status_code, 200)
+                papers_payload = papers_response.json()
+                self.assertEqual(papers_payload["total"], 1)
+                self.assertEqual(papers_payload["papers"][0]["paper_id"], paper_id)
+
+            log_lines = request_logger.log_path.read_text(encoding="utf-8").strip().splitlines()
+            self.assertEqual(len(log_lines), 1)
+            logged_event = json.loads(log_lines[0])
+            self.assertEqual(logged_event["endpoint"], "/ask")
+            self.assertEqual(logged_event["paper_id"], paper_id)
+            self.assertEqual(logged_event["extra"]["num_chunks_retrieved"], 2)
+
 
 if __name__ == "__main__":
     unittest.main()
