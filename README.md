@@ -51,6 +51,13 @@ flowchart TD
 ## Quick Start
 
 ```bash
+make install
+make run-api
+```
+
+If you prefer not to use `make`, the equivalent commands still work:
+
+```bash
 pip install -r requirements.txt
 python -m src.api.main
 ```
@@ -103,11 +110,27 @@ reliable-paper-copilot/
 └── docker/          # Docker configuration
 ```
 
+## Common Workflows
+
+```bash
+make help
+make test
+make run-api
+make run-ui
+make ingest PAPER=path/to/paper.pdf
+make eval
+make eval EVAL_CONFIG=configs/experiments/hybrid-retrieval.yaml
+make compare-experiments BASELINE=artifacts/experiments/run-a/results.json CANDIDATE=artifacts/experiments/run-b/results.json
+make benchmark-report REPORT_RESULTS=artifacts/experiments/latest/results.json
+```
+
+`make run-ui` is an alias for `make run-api`, because the browser UI is served directly by the FastAPI app at `http://localhost:8000`.
+
 ## Evaluation
 
 ```bash
-python scripts/run_evaluation.py
-python scripts/run_evaluation.py --config configs/experiments/hybrid-retrieval.yaml
+make eval
+make eval EVAL_CONFIG=configs/experiments/hybrid-retrieval.yaml
 ```
 
 The evaluation runner now reports both classic QA metrics and an answer-quality rubric:
