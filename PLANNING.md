@@ -76,9 +76,10 @@
 
 ## Phase 6 — Reproducibility and Dev Ergonomics
 - [x] Make the pytest suite runnable from a fresh checkout without manual `PYTHONPATH` setup
+- [x] Add a demo script or Make target that runs the sample-package ingest and asks a canned demo question end-to-end
 
 ## Current priority order
-1. Add a demo script or Make target that runs the sample-package ingest and asks a canned demo question end-to-end.
+1. Persist sample demo output to an artifacts/demo directory so the canned workflow leaves behind a reusable demo transcript.
 
 ## Notes
 - Work on one item per session

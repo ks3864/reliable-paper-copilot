@@ -8,8 +8,10 @@ BASELINE ?=
 CANDIDATE ?=
 REPORT_RESULTS ?=
 PAPER ?=
+QUESTION_ID ?=
+RETRIEVAL_MODE ?= hybrid
 
-.PHONY: help install test run-api run-ui ingest-check ingest fetch-sample-package eval compare-experiments benchmark-report
+.PHONY: help install test run-api run-ui ingest-check ingest fetch-sample-package demo-sample-package eval compare-experiments benchmark-report
 
 help:
 	@printf "Reliable Scientific Paper Copilot workflows\n\n"
@@ -19,6 +21,8 @@ help:
 	@printf "  make run-ui                               Start the app for browser UI work\n"
 	@printf "  make ingest PAPER=path/to/paper.pdf       Upload a PDF to the local API\n"
 	@printf "  make fetch-sample-package                 Download the tracked sample real-paper PDF\n"
+	@printf "  make demo-sample-package [QUESTION_ID=architecture RETRIEVAL_MODE=hybrid]\n"
+	@printf "                                           Run the packaged sample-paper ingest + canned QA flow\n"
 	@printf "  make eval [EVAL_CONFIG=... OUTPUT_DIR=...] Run the evaluation pipeline\n"
 	@printf "  make compare-experiments BASELINE=... CANDIDATE=...\n"
 	@printf "                                           Compare two results.json files\n"
@@ -53,6 +57,9 @@ ingest: ingest-check
 
 fetch-sample-package:
 	$(PYTHON) scripts/fetch_sample_package.py
+
+demo-sample-package:
+	$(PYTHON) scripts/run_sample_demo.py $(if $(QUESTION_ID),--question-id $(QUESTION_ID),) --retrieval-mode $(RETRIEVAL_MODE)
 
 eval:
 	$(PYTHON) scripts/run_evaluation.py --config $(EVAL_CONFIG) --output-dir $(OUTPUT_DIR)

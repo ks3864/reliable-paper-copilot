@@ -122,6 +122,8 @@ make run-api
 make run-ui
 make ingest PAPER=path/to/paper.pdf
 make fetch-sample-package
+make demo-sample-package
+make demo-sample-package QUESTION_ID=architecture
 make eval
 make eval EVAL_CONFIG=configs/experiments/hybrid-retrieval.yaml
 make compare-experiments BASELINE=artifacts/experiments/run-a/results.json CANDIDATE=artifacts/experiments/run-b/results.json
@@ -148,7 +150,22 @@ The package metadata and demo questions live here:
 - `sample_packages/attention-is-all-you-need/manifest.json`
 - `sample_packages/attention-is-all-you-need/questions.json`
 
-### 2. Start the local API
+### 2. Fastest end-to-end demo path
+
+If you just want one reproducible command that downloads the packaged PDF, ingests it, and asks a canned question end-to-end, run:
+
+```bash
+make demo-sample-package
+```
+
+That uses the packaged `motivation` question by default and prints a JSON payload containing the upload metadata plus the answer response.
+You can swap in a different canned prompt, for example:
+
+```bash
+make demo-sample-package QUESTION_ID=architecture
+```
+
+### 3. Start the local API manually
 
 ```bash
 make run-api
@@ -166,7 +183,7 @@ curl --fail --show-error -X POST \
 Copy the returned `paper_id`.
 If you prefer the browser flow, open `http://127.0.0.1:8000` and upload the same file through the built-in web UI.
 
-### 3. Ask the packaged demo questions
+### 4. Ask the packaged demo questions
 
 Use the sample package questions directly against `/ask`.
 Example:
@@ -191,7 +208,7 @@ Recommended live-demo sequence:
 
 Those prompts are already listed in `sample_packages/attention-is-all-you-need/questions.json`, along with the expected answer focus for each one.
 
-### 4. Inspect persisted paper metadata
+### 5. Inspect persisted paper metadata
 
 After upload, confirm the paper registry captured the paper and its ingestion metadata:
 
@@ -211,7 +228,7 @@ For a compact, shareable paper brief that rolls up the key metadata, extracted s
 curl --fail --show-error http://127.0.0.1:8000/papers/<paper_id>/brief
 ```
 
-### 5. Run the reproducible evaluation pass
+### 6. Run the reproducible evaluation pass
 
 The sample package is for ingestion and QA demos. For a stable metrics pass that works on a fresh machine, run the existing eval set:
 
@@ -225,7 +242,7 @@ Then turn the latest `results.json` into a shareable summary:
 make benchmark-report REPORT_RESULTS=artifacts/experiments/hybrid-retrieval/results.json
 ```
 
-### 6. Optional: demo the notebook walkthrough
+### 7. Optional: demo the notebook walkthrough
 
 For a shorter scripted walkthrough, open:
 
