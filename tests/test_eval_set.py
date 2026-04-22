@@ -14,6 +14,9 @@ def test_eval_pairs_reference_existing_sections():
     available_sections = {chunk["section"] for chunk in SAMPLE_PAPER_CHUNKS}
 
     for pair in EVAL_QA_PAIRS:
+        if not pair.get("is_answerable", True):
+            assert pair["relevant_sections"] == []
+            continue
         assert pair["relevant_sections"]
         assert set(pair["relevant_sections"]).issubset(available_sections)
 
@@ -28,3 +31,10 @@ def test_eval_pairs_reference_existing_sources():
 def test_eval_set_contains_multiple_papers():
     available_sources = {chunk["metadata"]["source"] for chunk in SAMPLE_PAPER_CHUNKS}
     assert len(available_sources) >= 2
+
+
+def test_eval_set_includes_unanswerable_examples():
+    unanswerable = [pair for pair in EVAL_QA_PAIRS if not pair.get("is_answerable", True)]
+
+    assert len(unanswerable) >= 2
+    assert {pair["source"] for pair in unanswerable} == {"sample_paper", "molecular_gnn_paper"}

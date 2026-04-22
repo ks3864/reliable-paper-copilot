@@ -354,6 +354,22 @@ EVAL_QA_PAIRS = [
         "gold_answer": "Future work will incorporate 3D conformer information and uncertainty calibration.",
         "relevant_sections": ["conclusions"],
         "source": "molecular_gnn_paper"
+    },
+    {
+        "id": "q31",
+        "question": "What optimizer and learning rate were used to train the transformer?",
+        "gold_answer": "The paper does not provide the optimizer or learning rate.",
+        "relevant_sections": [],
+        "source": "sample_paper",
+        "is_answerable": False
+    },
+    {
+        "id": "q32",
+        "question": "How many molecules are in the Tox21 training split?",
+        "gold_answer": "The paper does not provide the training split size.",
+        "relevant_sections": [],
+        "source": "molecular_gnn_paper",
+        "is_answerable": False
     }
 ]
 

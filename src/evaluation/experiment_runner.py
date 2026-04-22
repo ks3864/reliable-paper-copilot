@@ -106,11 +106,24 @@ def _build_summary_text(experiment_run: Dict[str, Any]) -> str:
         f"- F1: {aggregate['f1']:.2%}",
         f"- Retrieval hit: {aggregate['retrieval_hit']:.2%}",
         f"- Retrieval MRR: {aggregate['retrieval_mrr']:.2%}",
+        f"- Refusal rate: {aggregate.get('refusal_rate', 0.0):.2%}",
+        f"- Refusal accuracy: {aggregate.get('refusal_accuracy', 0.0):.2%}",
+        f"- Refusal precision: {aggregate.get('refusal_precision', 0.0):.2%}",
+        f"- Refusal recall: {aggregate.get('refusal_recall', 0.0):.2%}",
     ]
 
     for metric_name in ("groundedness", "correctness", "completeness", "answer_quality"):
         if metric_name in aggregate:
             lines.append(f"- {metric_name.replace('_', ' ').title()}: {aggregate[metric_name]:.2%}")
+
+    for slice_name, slice_metrics in experiment_run["metrics"].get("slices", {}).items():
+        lines.extend(
+            [
+                f"- {slice_name.title()} questions: {slice_metrics['count']}",
+                f"  - {slice_name.title()} refusal rate: {slice_metrics['refusal_rate']:.2%}",
+                f"  - {slice_name.title()} refusal accuracy: {slice_metrics['refusal_accuracy']:.2%}",
+            ]
+        )
 
     return "\n".join(lines) + "\n"
 

@@ -53,6 +53,8 @@
   - [x] Sub-task 1: add page-aware structured evidence objects to chunk metadata, /ask responses, and the web UI evidence panel
   - [x] Sub-task 2: add answer-level citation span anchors/highlighting tied to evidence chunks in the UI
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
+  - [x] Sub-task 1: add unanswerable eval examples plus core refusal and slice metrics in the evaluation pipeline
+  - [ ] Sub-task 2: surface answerable vs unanswerable results more clearly in benchmark/report outputs and docs
 - [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
 - [ ] Add ingestion smoke tests and end-to-end API tests
 - [ ] Add Makefile / task runner for common workflows (ingest, eval, run-api, run-ui, compare-experiments)
