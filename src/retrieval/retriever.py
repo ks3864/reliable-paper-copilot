@@ -1,10 +1,12 @@
-"""Embedding-based retrieval with optional hybrid lexical fusion."""
+"""Embedding-based retrieval with optional hybrid BM25 lexical fusion."""
 
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
+from collections import Counter
 from typing import Any, Dict, List, Optional
 
 try:
@@ -63,6 +65,11 @@ class Retriever:
         self.chunks: List[Dict[str, Any]] = []
         self.chunk_embeddings: Optional[np.ndarray] = None
         self.use_lexical_fallback = self.model is None or faiss is None or np is None
+        self._bm25_corpus_terms: List[List[str]] = []
+        self._bm25_doc_freqs: Counter[str] = Counter()
+        self._bm25_avg_doc_len: float = 0.0
+        self._bm25_k1: float = 1.5
+        self._bm25_b: float = 0.75
 
     def build_index(self, chunks: List[Dict[str, Any]]) -> None:
         """
@@ -72,6 +79,7 @@ class Retriever:
             chunks: List of chunk dictionaries from chunking module
         """
         self.chunks = chunks
+        self._prepare_lexical_index()
 
         if self.use_lexical_fallback:
             print("sentence-transformers/faiss unavailable, using lexical retrieval fallback.")
@@ -142,13 +150,12 @@ class Retriever:
         return results
 
     def _retrieve_lexically(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
-        query_terms = set(re.findall(r"\w+", query.lower()))
+        self._ensure_lexical_index()
+        query_terms = self._tokenize(query)
         scored: List[Dict[str, Any]] = []
 
-        for chunk in self.chunks:
-            chunk_terms = set(re.findall(r"\w+", chunk["text"].lower()))
-            overlap = query_terms & chunk_terms
-            score = len(overlap) / max(len(query_terms), 1)
+        for chunk, chunk_terms in zip(self.chunks, self._bm25_corpus_terms):
+            score = self._bm25_score(query_terms, chunk_terms)
             updated = dict(chunk)
             updated["lexical_score"] = float(score)
             updated["retrieval_score"] = float(score)
@@ -198,6 +205,51 @@ class Retriever:
     def _rrf(self, rank: int, weight: float) -> float:
         return float(weight) / float(self.rrf_k + rank)
 
+    def _prepare_lexical_index(self) -> None:
+        self._bm25_corpus_terms = [self._tokenize(chunk.get("text", "")) for chunk in self.chunks]
+        self._bm25_doc_freqs = Counter()
+
+        for terms in self._bm25_corpus_terms:
+            for term in set(terms):
+                self._bm25_doc_freqs[term] += 1
+
+        if self._bm25_corpus_terms:
+            total_terms = sum(len(terms) for terms in self._bm25_corpus_terms)
+            self._bm25_avg_doc_len = total_terms / len(self._bm25_corpus_terms)
+        else:
+            self._bm25_avg_doc_len = 0.0
+
+    def _ensure_lexical_index(self) -> None:
+        if len(self._bm25_corpus_terms) != len(self.chunks):
+            self._prepare_lexical_index()
+
+    def _bm25_score(self, query_terms: List[str], document_terms: List[str]) -> float:
+        if not query_terms or not document_terms or not self.chunks:
+            return 0.0
+
+        doc_len = len(document_terms)
+        term_counts = Counter(document_terms)
+        score = 0.0
+        num_docs = len(self.chunks)
+        avg_doc_len = self._bm25_avg_doc_len or 1.0
+
+        for term in query_terms:
+            term_freq = term_counts.get(term, 0)
+            if term_freq == 0:
+                continue
+
+            doc_freq = self._bm25_doc_freqs.get(term, 0)
+            idf = float(math.log1p(max(0.0, (num_docs - doc_freq + 0.5) / (doc_freq + 0.5))))
+            numerator = term_freq * (self._bm25_k1 + 1.0)
+            denominator = term_freq + self._bm25_k1 * (1.0 - self._bm25_b + self._bm25_b * (doc_len / avg_doc_len))
+            score += idf * (numerator / denominator)
+
+        return score
+
+    @staticmethod
+    def _tokenize(text: str) -> List[str]:
+        return re.findall(r"\w+", text.lower())
+
     def save(self, index_path: str, chunks_path: str) -> None:
         """Save index and chunks to disk."""
         if self.index is None:
@@ -229,6 +281,7 @@ class Retriever:
         with open(chunks_path, "r", encoding="utf-8") as f:
             data = json.load(f)
         self.chunks = data.get("chunks", [])
+        self._prepare_lexical_index()
 
         emb_path = chunks_path.replace(".json", "_embeddings.npy")
         if os.path.exists(emb_path):

@@ -6,7 +6,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 
 - **PDF Parsing**: Extract structured text and metadata from scientific papers
 - **Section-Aware Chunking**: Split papers into meaningful chunks with section metadata
-- **Embedding-Based Retrieval**: Find relevant passages using FAISS vector search
+- **Hybrid Retrieval**: Combine dense FAISS search with BM25 lexical scoring
 - **Cross-Encoder Reranking**: Reorder retrieved passages with a higher-precision reranker
 - **Grounded Generation**: Answer questions with citations from the paper
 - **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
@@ -44,7 +44,7 @@ flowchart TD
 ### Component notes
 
 - **Ingestion path**: uploaded PDFs are parsed into structured JSON, then chunked and persisted for retrieval.
-- **Retrieval path**: vector retrieval narrows the candidate set, reranking improves relevance, and confidence estimation decides whether the evidence is good enough to answer.
+- **Retrieval path**: dense retrieval and BM25 lexical retrieval can be fused before reranking, and confidence estimation decides whether the evidence is good enough to answer.
 - **Extraction path**: targeted extractors pull fields like datasets, sample sizes, limitations, and inclusion or exclusion criteria directly from the parsed paper.
 - **Evaluation path**: experiment configs, regression comparison, and answer-quality judging make it possible to compare pipeline variants reliably.
 

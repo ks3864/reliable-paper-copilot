@@ -47,6 +47,7 @@
 - [ ] Add hybrid retrieval (BM25 + dense retrieval fusion)
   - [x] Sub-task 1: add retriever-level hybrid rank fusion between dense and lexical candidates
   - [x] Sub-task 2: expose hybrid retrieval settings through API/eval configs and surface scores in artifacts
+  - [x] Sub-task 3: upgrade lexical retrieval from token overlap to BM25 scoring for stronger hybrid fusion
 - [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
 - [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost

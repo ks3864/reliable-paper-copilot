@@ -170,7 +170,7 @@ class RetrievalRerankingTests(unittest.TestCase):
         self.assertTrue(all("reranker_score" not in chunk for chunk in results))
 
     def test_hybrid_retrieval_fuses_dense_and_lexical_signals(self):
-        retriever = Retriever(retrieval_mode="hybrid")
+        retriever = Retriever(retrieval_mode="hybrid", lexical_weight=3.0, dense_weight=0.2)
         retriever.build_index(
             [
                 {"chunk_id": 0, "section": "abstract", "text": "General discussion without the key phrase.", "metadata": {}},
@@ -181,8 +181,9 @@ class RetrievalRerankingTests(unittest.TestCase):
 
         results = retriever.retrieve("What dataset was used?", top_k=3)
 
-        self.assertEqual([chunk["chunk_id"] for chunk in results], [1, 0, 2])
-        self.assertAlmostEqual(results[0]["dense_rank"], 2)
+        self.assertEqual(results[0]["chunk_id"], 2)
+        self.assertEqual({chunk["chunk_id"] for chunk in results[:2]}, {1, 2})
+        self.assertAlmostEqual(results[0]["dense_rank"], 3)
         self.assertAlmostEqual(results[0]["lexical_rank"], 1)
         self.assertIn("hybrid_score", results[0])
         self.assertIn("dense_score", results[0])
@@ -201,6 +202,23 @@ class RetrievalRerankingTests(unittest.TestCase):
 
         self.assertEqual(results[0]["chunk_id"], 1)
         self.assertIn("lexical_score", results[0])
+
+    def test_lexical_retrieval_uses_bm25_length_normalization(self):
+        retriever = Retriever(retrieval_mode="lexical")
+        retriever.chunks = [
+            {"chunk_id": 0, "section": "methods", "text": "dataset dataset dataset", "metadata": {}},
+            {
+                "chunk_id": 1,
+                "section": "methods",
+                "text": "dataset noise noise noise noise noise noise noise noise noise noise noise",
+                "metadata": {},
+            },
+        ]
+
+        results = retriever.retrieve("dataset", top_k=2)
+
+        self.assertEqual([chunk["chunk_id"] for chunk in results], [0, 1])
+        self.assertGreater(results[0]["lexical_score"], results[1]["lexical_score"])
 
 
 if __name__ == "__main__":
