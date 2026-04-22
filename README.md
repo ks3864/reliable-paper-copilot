@@ -79,6 +79,7 @@ For deployment guidance, including when to keep the app fully local versus when 
 - `GET /` - Lightweight web UI
 - `POST /upload` - Upload and process a PDF
 - `POST /ask` - Ask a question about a processed paper
+- `GET /papers/{paper_id}/brief` - Fetch a compact demo-ready paper brief with overview, study signals, and ingestion context
 - `GET /health` - Health check
 
 `POST /ask` also accepts optional retrieval controls for experiments and debugging:
@@ -202,6 +203,12 @@ For one paper specifically:
 
 ```bash
 curl --fail --show-error http://127.0.0.1:8000/papers/<paper_id>/status
+```
+
+For a compact, shareable paper brief that rolls up the key metadata, extracted study signals, and ingestion notes:
+
+```bash
+curl --fail --show-error http://127.0.0.1:8000/papers/<paper_id>/brief
 ```
 
 ### 5. Run the reproducible evaluation pass

@@ -66,8 +66,13 @@
   - [x] Sub-task 2: document reproducible end-to-end demo steps that use the sample package
 - [x] Add deployment notes for local + split-host browser-assisted workflows if needed
 
+## Phase 5 — Demo Ergonomics
+- [x] Add a demo-ready paper brief export endpoint
+  - [x] Sub-task 1: add a compact `/papers/{paper_id}/brief` API view for summary metadata, study signals, and ingestion context
+  - [ ] Sub-task 2: add a UI action to copy or download the paper brief for demos
+
 ## Current priority order
-1. No open items currently, next session should add a new backlog item before continuing.
+1. Add a UI action to copy or download the paper brief for demos.
 
 ## Notes
 - Work on one item per session

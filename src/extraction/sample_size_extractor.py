@@ -20,6 +20,11 @@ SAMPLE_PATTERNS = [
         r"\bcohort of\s+(\d{1,3}(?:,\d{3})*|\d+)\b",
         re.IGNORECASE,
     ),
+    re.compile(
+        r"\bwith\s+(\d{1,3}(?:,\d{3})*|\d+)\s+"
+        r"(?:patients|participants|subjects|individuals|samples|cases|volunteers|records?)\b",
+        re.IGNORECASE,
+    ),
 ]
 
 SECTION_BONUS = {"abstract", "methods", "materials and methods", "results", "patients", "study population"}

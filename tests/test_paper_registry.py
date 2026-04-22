@@ -250,9 +250,10 @@ class PaperRegistryApiTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)
             registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            paper_cache = {}
 
             with temporary_cwd(tmp_path), patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
-                api_main, "PAPERS", {}
+                api_main, "PAPERS", paper_cache
             ), patch.object(api_main, "parse_pdf", return_value=parsed), patch.object(
                 api_main, "chunk_by_sections", return_value=chunks
             ), patch.object(api_main, "create_retriever", return_value=StubRetriever()):
@@ -279,7 +280,7 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertEqual(stored_record["file_size_bytes"], len(b"%PDF-1.4\n%stub pdf bytes\n"))
             self.assertEqual(stored_record["summary_metadata"]["authors"], ["Ada Lovelace"])
             self.assertFalse(Path(stored_record["index_path"]).exists())
-            self.assertIn(payload["paper_id"], api_main.PAPERS)
+            self.assertIn(payload["paper_id"], paper_cache)
 
     def test_upload_route_rejects_non_pdf_files(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -353,6 +354,23 @@ class PaperRegistryApiTests(unittest.TestCase):
                 self.assertEqual(status_payload["operator_ingestion_notes"], ["Flag missing appendix links"])
                 self.assertEqual(status_payload["provenance"]["source_label"], "Persistent import")
                 self.assertIn("paper-2", api_main.PAPERS)
+
+                brief_response = client.get("/papers/paper-2/brief")
+                self.assertEqual(brief_response.status_code, 200)
+                brief_payload = brief_response.json()
+                self.assertEqual(brief_payload["paper_id"], "paper-2")
+                self.assertEqual(brief_payload["overview"]["page_count"], 12)
+                self.assertEqual(brief_payload["overview"]["num_chunks"], 7)
+                self.assertEqual(brief_payload["study_signals"]["datasets"], ["MIMIC-III"])
+                self.assertEqual(brief_payload["study_signals"]["sample_sizes"], [120])
+                self.assertEqual(
+                    brief_payload["ingestion"]["operator_ingestion_notes"],
+                    ["Flag missing appendix links"],
+                )
+                self.assertEqual(
+                    brief_payload["ingestion"]["provenance"]["source_label"],
+                    "Persistent import",
+                )
 
     def test_metadata_patch_route_updates_operator_fields(self):
         with tempfile.TemporaryDirectory() as tmpdir:

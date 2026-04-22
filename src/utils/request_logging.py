@@ -39,6 +39,7 @@ class RequestLogger:
             "model_version": model_version,
         }
         if extra:
+            event["extra"] = extra
             event.update(extra)
         return event
 

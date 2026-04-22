@@ -108,6 +108,17 @@ class PaperMetadataUpdateRequest(BaseModel):
     provenance: Optional[Dict[str, Any]] = None
 
 
+class PaperBrief(BaseModel):
+    paper_id: str
+    title: Optional[str]
+    status: str
+    original_filename: Optional[str] = None
+    created_at: Optional[str] = None
+    overview: Dict[str, Any]
+    study_signals: Dict[str, Any]
+    ingestion: Dict[str, Any]
+
+
 @app.get("/", response_class=HTMLResponse)
 async def web_ui():
     """Serve a lightweight browser UI for uploading papers and asking questions."""
@@ -124,6 +135,46 @@ def _hydrate_paper_cache(paper: Dict[str, Any]) -> Dict[str, Any]:
 def _load_saved_chunks(chunks_path: str) -> List[Dict[str, Any]]:
     with Path(chunks_path).open("r", encoding="utf-8") as handle:
         return json.load(handle).get("chunks", [])
+
+
+def _build_paper_brief(paper: Dict[str, Any]) -> PaperBrief:
+    summary_metadata = paper.get("summary_metadata") or {}
+    extracted_summary = summary_metadata.get("extracted_summary") or {}
+    provenance = paper.get("provenance") or {}
+    artifact_validation = paper.get("artifact_validation") or {}
+
+    return PaperBrief(
+        paper_id=paper["paper_id"],
+        title=paper.get("title"),
+        status=paper.get("status", "unknown"),
+        original_filename=paper.get("original_filename"),
+        created_at=paper.get("created_at"),
+        overview={
+            "authors": summary_metadata.get("authors") or [],
+            "abstract_preview": summary_metadata.get("abstract_preview"),
+            "page_count": paper.get("page_count", 0),
+            "num_chunks": paper.get("num_chunks", 0),
+            "section_count": summary_metadata.get("section_count", 0),
+            "section_names": summary_metadata.get("section_names") or [],
+            "total_word_count": summary_metadata.get("total_word_count", 0),
+            "tables_count": summary_metadata.get("tables_count", 0),
+            "chunking_strategies": summary_metadata.get("chunking_strategies") or {},
+        },
+        study_signals={
+            "datasets": extracted_summary.get("datasets") or [],
+            "sample_sizes": extracted_summary.get("sample_sizes") or [],
+            "limitations": extracted_summary.get("limitations") or [],
+            "inclusion_criteria": extracted_summary.get("inclusion_criteria") or [],
+            "exclusion_criteria": extracted_summary.get("exclusion_criteria") or [],
+            "counts": extracted_summary.get("counts") or {},
+        },
+        ingestion={
+            "artifact_validation": artifact_validation,
+            "ingestion_notes": paper.get("ingestion_notes") or [],
+            "operator_ingestion_notes": paper.get("operator_ingestion_notes") or [],
+            "provenance": provenance,
+        },
+    )
 
 
 def _format_page_label(page_numbers: List[int]) -> Optional[str]:
@@ -298,10 +349,10 @@ async def upload_paper(file: UploadFile = File(...)):
             "title": parsed["metadata"].get("title", "Unknown"),
             "original_filename": file.filename,
             "status": "ready",
-            "parsed_path": str(parsed_path),
-            "chunks_path": str(chunks_path),
-            "index_path": str(index_path),
-            "raw_pdf_path": str(raw_pdf_path),
+            "parsed_path": str(parsed_path.resolve()),
+            "chunks_path": str(chunks_path.resolve()),
+            "index_path": str(index_path.resolve()),
+            "raw_pdf_path": str(raw_pdf_path.resolve()),
             "num_chunks": len(chunks),
             "page_count": parsed["metadata"].get("page_count", 0),
             "file_size_bytes": len(content),
@@ -430,6 +481,19 @@ async def get_paper_status(paper_id: str):
         provenance=paper.get("provenance"),
         summary_metadata=paper.get("summary_metadata"),
     )
+
+
+@app.get("/papers/{paper_id}/brief", response_model=PaperBrief)
+async def get_paper_brief(paper_id: str):
+    """Return a compact, demo-friendly summary of a paper and its ingestion metadata."""
+    paper = PAPERS.get(paper_id)
+    if paper is None:
+        registry_record = PAPER_REGISTRY.get_paper(paper_id)
+        if registry_record is None:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        paper = _hydrate_paper_cache(registry_record)
+
+    return _build_paper_brief(paper)
 
 
 @app.patch("/papers/{paper_id}/metadata", response_model=PaperStatus)
