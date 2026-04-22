@@ -46,7 +46,7 @@
     - [x] Sub-task 3c: surface richer paper metadata more clearly in the web UI
 - [ ] Add hybrid retrieval (BM25 + dense retrieval fusion)
   - [x] Sub-task 1: add retriever-level hybrid rank fusion between dense and lexical candidates
-  - [ ] Sub-task 2: expose hybrid retrieval settings through API/eval configs and surface scores in artifacts
+  - [x] Sub-task 2: expose hybrid retrieval settings through API/eval configs and surface scores in artifacts
 - [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
 - [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost

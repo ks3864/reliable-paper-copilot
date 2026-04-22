@@ -365,7 +365,90 @@ class PaperRegistryApiTests(unittest.TestCase):
                 payload = response.json()
                 self.assertIn("MIMIC-III", payload["answer"])
                 self.assertEqual(payload["sources"], ["methods"])
+                self.assertEqual(payload["retrieval_mode"], "dense")
+                self.assertEqual(payload["retrieval_scores"][0]["section"], "methods")
+                self.assertIn("retrieval_score", payload["retrieval_scores"][0])
                 self.assertIsNotNone(api_main.PAPERS["paper-ask"]["retriever"])
+
+    def test_ask_supports_hybrid_retrieval_request_settings(self):
+        class StubGenerator:
+            def __init__(self, retriever):
+                self.retriever = retriever
+
+            def answer(self, question, top_k=5):
+                chunks = self.retriever.retrieve(question, top_k=top_k)
+                return {
+                    "question": question,
+                    "answer": "Hybrid answer",
+                    "sources": [chunk["section"] for chunk in chunks],
+                    "retrieved_chunks": chunks,
+                    "num_chunks_retrieved": len(chunks),
+                    "confidence": {"has_good_match": True},
+                    "token_usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    "model_version": "stub-generator",
+                }
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            chunks_path = tmp_path / "paper_chunks.json"
+            chunks_path.write_text(
+                json.dumps(
+                    {
+                        "chunks": [
+                            {
+                                "chunk_id": 0,
+                                "section": "methods",
+                                "text": "Dataset construction details for the medical cohort.",
+                                "metadata": {"source": "Persistent Paper"},
+                            },
+                            {
+                                "chunk_id": 1,
+                                "section": "results",
+                                "text": "Benchmark dataset performance is summarized here.",
+                                "metadata": {"source": "Persistent Paper"},
+                            },
+                        ]
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-hybrid",
+                    "title": "Persistent Paper",
+                    "status": "ready",
+                    "num_chunks": 2,
+                    "chunks_path": str(chunks_path),
+                    "index_path": str(tmp_path / "missing.faiss"),
+                    "created_at": "2026-04-16T21:31:00Z",
+                }
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(api_main, "PAPERS", {}), patch.object(
+                api_main, "SimpleAnswerGenerator", StubGenerator
+            ):
+                client = TestClient(api_main.app)
+                response = client.post(
+                    "/ask",
+                    json={
+                        "paper_id": "paper-hybrid",
+                        "question": "What dataset was used?",
+                        "top_k": 2,
+                        "retrieval_mode": "hybrid",
+                        "lexical_weight": 1.2,
+                        "dense_weight": 0.8,
+                        "rrf_k": 30,
+                    },
+                )
+
+                self.assertEqual(response.status_code, 200)
+                payload = response.json()
+                self.assertEqual(payload["retrieval_mode"], "hybrid")
+                self.assertIn("hybrid_score", payload["retrieval_scores"][0])
+                self.assertIn("lexical_score", payload["retrieval_scores"][0])
+                self.assertIsNone(api_main.PAPERS["paper-hybrid"].get("retriever"))
 
 
 if __name__ == "__main__":

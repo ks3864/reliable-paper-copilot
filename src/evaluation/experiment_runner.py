@@ -34,6 +34,10 @@ DEFAULT_CONFIG: ExperimentConfig = {
     "retrieval": {
         "embedding_model": "all-MiniLM-L6-v2",
         "chunk_profile": "chunking-v2",
+        "mode": "dense",
+        "lexical_weight": 1.0,
+        "dense_weight": 1.0,
+        "rrf_k": 60,
     },
     "answering": {
         "generator": "simple",
@@ -89,11 +93,14 @@ def _slugify(value: str) -> str:
 def _build_summary_text(experiment_run: Dict[str, Any]) -> str:
     experiment = experiment_run["experiment"]
     aggregate = experiment_run["metrics"]["aggregate"]
+    retrieval = experiment_run["config"]["retrieval"]
     lines = [
         f"# Experiment Summary: {experiment['name']}",
         "",
         f"- Pipeline version: {experiment['pipeline_version']}",
         f"- Run ID: {experiment_run['run_id']}",
+        f"- Retrieval mode: {retrieval.get('mode', 'dense')}",
+        f"- Retrieval weights: dense={retrieval.get('dense_weight', 1.0)}, lexical={retrieval.get('lexical_weight', 1.0)}, rrf_k={retrieval.get('rrf_k', 60)}",
         f"- QA pairs evaluated: {len(experiment_run['results'])}",
         f"- Exact match: {aggregate['exact_match']:.2%}",
         f"- F1: {aggregate['f1']:.2%}",
@@ -148,11 +155,25 @@ def run_experiment(
     """Run the evaluation pipeline from a config file."""
     config = load_experiment_config(config_path)
     save_eval_set()
+    retrieval_config = config["retrieval"]
 
-    retriever = (retriever_factory or _default_retriever_factory)(
-        get_eval_chunks(config["retrieval"].get("chunk_profile", "chunking-v2")),
-        config["retrieval"].get("embedding_model"),
-    )
+    eval_chunks = get_eval_chunks(retrieval_config.get("chunk_profile", "chunking-v2"))
+    if retriever_factory is None:
+        from src.retrieval import create_retriever
+
+        retriever = create_retriever(
+            eval_chunks,
+            model_name=retrieval_config.get("embedding_model") or DEFAULT_CONFIG["retrieval"]["embedding_model"],
+            retrieval_mode=retrieval_config.get("mode", "dense"),
+            lexical_weight=float(retrieval_config.get("lexical_weight", 1.0)),
+            dense_weight=float(retrieval_config.get("dense_weight", 1.0)),
+            rrf_k=int(retrieval_config.get("rrf_k", 60)),
+        )
+    else:
+        retriever = retriever_factory(
+            eval_chunks,
+            retrieval_config.get("embedding_model"),
+        )
     generator = (generator_factory or _default_generator_factory)(
         retriever,
         config["answering"].get("generator"),

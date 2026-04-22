@@ -19,6 +19,8 @@ def test_load_experiment_config_applies_defaults(tmp_path):
     assert config["evaluation"]["top_k"] == 3
     assert config["retrieval"]["embedding_model"] == "all-MiniLM-L6-v2"
     assert config["retrieval"]["chunk_profile"] == "chunking-v2"
+    assert config["retrieval"]["mode"] == "dense"
+    assert config["retrieval"]["lexical_weight"] == 1.0
     assert config["answering"]["generator"] == "simple"
 
 
@@ -129,3 +131,30 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
     summary_text = (output_dir / "summary.md").read_text(encoding="utf-8")
     assert "# Experiment Summary: baseline-eval" in summary_text
     assert "Pipeline version: phase3-pipeline-versioning-v1" in summary_text
+    assert "Retrieval mode: dense" in summary_text
+
+
+def test_run_experiment_uses_hybrid_retrieval_settings_from_config(tmp_path):
+    config_path = tmp_path / "hybrid.yaml"
+    config_path.write_text(
+        """
+experiment:
+  name: hybrid-test
+  pipeline_version: phase4-hybrid
+retrieval:
+  mode: hybrid
+  dense_weight: 1.5
+  lexical_weight: 0.7
+  rrf_k: 42
+evaluation:
+  use_answer_quality_judge: false
+""",
+        encoding="utf-8",
+    )
+
+    result = run_experiment(config_path, judge_factory=lambda enabled: None)
+
+    assert result["config"]["retrieval"]["mode"] == "hybrid"
+    assert result["config"]["retrieval"]["dense_weight"] == 1.5
+    assert result["config"]["retrieval"]["lexical_weight"] == 0.7
+    assert result["config"]["retrieval"]["rrf_k"] == 42

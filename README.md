@@ -72,6 +72,12 @@ The API will be available at `http://localhost:8000`, and local `./data` is moun
 - `POST /ask` - Ask a question about a processed paper
 - `GET /health` - Health check
 
+`POST /ask` also accepts optional retrieval controls for experiments and debugging:
+- `retrieval_mode`: `dense`, `lexical`, or `hybrid`
+- `dense_weight`, `lexical_weight`, `rrf_k`: hybrid fusion settings
+
+The response now includes `retrieval_mode` plus `retrieval_scores` entries with per-chunk rank and dense, lexical, or hybrid score fields when available.
+
 ## Project Structure
 
 ```
@@ -101,6 +107,7 @@ reliable-paper-copilot/
 
 ```bash
 python scripts/run_evaluation.py
+python scripts/run_evaluation.py --config configs/experiments/hybrid-retrieval.yaml
 ```
 
 The evaluation runner now reports both classic QA metrics and an answer-quality rubric:

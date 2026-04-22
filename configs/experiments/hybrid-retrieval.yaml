@@ -1,12 +1,12 @@
 experiment:
-  name: baseline-eval
-  pipeline_version: phase3-pipeline-versioning-v1
-  description: Baseline experiment config for the sample evaluation pipeline.
+  name: hybrid-retrieval-eval
+  pipeline_version: phase4-hybrid-retrieval-v1
+  description: Evaluate chunking-v2 with reciprocal-rank-fusion hybrid retrieval enabled.
 
 retrieval:
   embedding_model: all-MiniLM-L6-v2
   chunk_profile: chunking-v2
-  mode: dense
+  mode: hybrid
   dense_weight: 1.0
   lexical_weight: 1.0
   rrf_k: 60

@@ -36,6 +36,22 @@ class QuestionRequest(BaseModel):
     paper_id: str
     question: str
     top_k: Optional[int] = 5
+    retrieval_mode: Optional[str] = None
+    lexical_weight: Optional[float] = None
+    dense_weight: Optional[float] = None
+    rrf_k: Optional[int] = None
+
+
+class RetrievedChunkScore(BaseModel):
+    chunk_id: Optional[int] = None
+    section: str
+    retrieval_score: float
+    dense_score: Optional[float] = None
+    lexical_score: Optional[float] = None
+    hybrid_score: Optional[float] = None
+    rank: Optional[int] = None
+    dense_rank: Optional[int] = None
+    lexical_rank: Optional[int] = None
 
 
 class QuestionResponse(BaseModel):
@@ -43,6 +59,8 @@ class QuestionResponse(BaseModel):
     answer: str
     sources: List[str]
     num_chunks_retrieved: int
+    retrieval_mode: str
+    retrieval_scores: List[RetrievedChunkScore]
 
 
 class PaperStatus(BaseModel):
@@ -73,6 +91,46 @@ def _hydrate_paper_cache(paper: Dict[str, Any]) -> Dict[str, Any]:
     cached.setdefault("retriever", None)
     PAPERS[paper["paper_id"]] = cached
     return cached
+
+
+def _load_saved_chunks(chunks_path: str) -> List[Dict[str, Any]]:
+    with Path(chunks_path).open("r", encoding="utf-8") as handle:
+        return json.load(handle).get("chunks", [])
+
+
+def _get_retriever_for_request(paper: Dict[str, Any], request: QuestionRequest) -> Retriever:
+    retrieval_mode = request.retrieval_mode or "dense"
+    lexical_weight = request.lexical_weight if request.lexical_weight is not None else 1.0
+    dense_weight = request.dense_weight if request.dense_weight is not None else 1.0
+    rrf_k = request.rrf_k if request.rrf_k is not None else 60
+
+    is_default_dense = (
+        retrieval_mode == "dense"
+        and lexical_weight == 1.0
+        and dense_weight == 1.0
+        and rrf_k == 60
+    )
+
+    if is_default_dense:
+        retriever = paper.get("retriever")
+        if retriever is None:
+            retriever = Retriever()
+            if Path(paper["index_path"]).exists():
+                retriever.load(paper["index_path"], paper["chunks_path"])
+            else:
+                saved_chunks = _load_saved_chunks(paper["chunks_path"])
+                retriever.build_index(saved_chunks)
+            paper["retriever"] = retriever
+        return retriever
+
+    saved_chunks = _load_saved_chunks(paper["chunks_path"])
+    return create_retriever(
+        saved_chunks,
+        retrieval_mode=retrieval_mode,
+        lexical_weight=float(lexical_weight),
+        dense_weight=float(dense_weight),
+        rrf_k=int(rrf_k),
+    )
 
 
 for _paper in PAPER_REGISTRY.list_papers():
@@ -204,20 +262,10 @@ async def ask_question(request: QuestionRequest):
     if paper.get("status") != "ready":
         raise HTTPException(status_code=400, detail="Paper not ready for queries.")
     
-    # Get or create retriever
-    retriever = paper.get("retriever")
-    if retriever is None:
-        retriever = Retriever()
-        if Path(paper["index_path"]).exists():
-            retriever.load(paper["index_path"], paper["chunks_path"])
-        else:
-            chunks_payload = Path(paper["chunks_path"])
-            if not chunks_payload.exists():
-                raise HTTPException(status_code=500, detail="Paper artifacts are missing on disk.")
-            with chunks_payload.open("r", encoding="utf-8") as handle:
-                saved_chunks = json.load(handle).get("chunks", [])
-            retriever.build_index(saved_chunks)
-        paper["retriever"] = retriever
+    if not Path(paper["chunks_path"]).exists():
+        raise HTTPException(status_code=500, detail="Paper artifacts are missing on disk.")
+
+    retriever = _get_retriever_for_request(paper, request)
     
     # Create answer generator (using mock for now - replace with real LLM)
     generator = SimpleAnswerGenerator(retriever)
@@ -248,7 +296,22 @@ async def ask_question(request: QuestionRequest):
         question=result["question"],
         answer=result["answer"],
         sources=result["sources"],
-        num_chunks_retrieved=result["num_chunks_retrieved"]
+        num_chunks_retrieved=result["num_chunks_retrieved"],
+        retrieval_mode=retriever.retrieval_mode,
+        retrieval_scores=[
+            RetrievedChunkScore(
+                chunk_id=chunk.get("chunk_id"),
+                section=chunk.get("section", "unknown"),
+                retrieval_score=float(chunk.get("retrieval_score", 0.0)),
+                dense_score=chunk.get("dense_score"),
+                lexical_score=chunk.get("lexical_score"),
+                hybrid_score=chunk.get("hybrid_score"),
+                rank=chunk.get("rank"),
+                dense_rank=chunk.get("dense_rank"),
+                lexical_rank=chunk.get("lexical_rank"),
+            )
+            for chunk in result.get("retrieved_chunks", [])
+        ],
     )
 
 
