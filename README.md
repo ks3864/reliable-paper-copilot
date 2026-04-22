@@ -72,6 +72,8 @@ docker compose up --build
 
 The API will be available at `http://localhost:8000`, and local `./data` is mounted into the container at `/app/data` so uploaded papers and indexes persist across restarts.
 
+For deployment guidance, including when to keep the app fully local versus when a split-host browser-assisted demo setup is reasonable, see [`docs/deployment.md`](docs/deployment.md).
+
 ## API Endpoints
 
 - `GET /` - Lightweight web UI

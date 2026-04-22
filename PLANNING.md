@@ -64,10 +64,10 @@
 - [x] Add sample real-paper package and reproducible demo instructions
   - [x] Sub-task 1: add a versioned sample real-paper package manifest, demo questions, and fetch helper script
   - [x] Sub-task 2: document reproducible end-to-end demo steps that use the sample package
-- [ ] Add deployment notes for local + split-host browser-assisted workflows if needed
+- [x] Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Current priority order
-1. Add deployment notes for local + split-host browser-assisted workflows if needed
+1. No open items currently, next session should add a new backlog item before continuing.
 
 ## Notes
 - Work on one item per session
