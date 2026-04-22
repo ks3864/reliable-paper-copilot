@@ -118,6 +118,7 @@ make test
 make run-api
 make run-ui
 make ingest PAPER=path/to/paper.pdf
+make fetch-sample-package
 make eval
 make eval EVAL_CONFIG=configs/experiments/hybrid-retrieval.yaml
 make compare-experiments BASELINE=artifacts/experiments/run-a/results.json CANDIDATE=artifacts/experiments/run-b/results.json
@@ -125,6 +126,103 @@ make benchmark-report REPORT_RESULTS=artifacts/experiments/latest/results.json
 ```
 
 `make run-ui` is an alias for `make run-api`, because the browser UI is served directly by the FastAPI app at `http://localhost:8000`.
+
+## Reproducible sample real-paper demo
+
+The repo includes a versioned sample package for `Attention Is All You Need` under `sample_packages/attention-is-all-you-need/`.
+Use it when you want a consistent portfolio demo with one known paper and a small set of canned questions.
+
+### 1. Install dependencies and fetch the sample PDF
+
+```bash
+make install
+make fetch-sample-package
+```
+
+That downloads the paper to `data/raw/attention-is-all-you-need.pdf`.
+The package metadata and demo questions live here:
+
+- `sample_packages/attention-is-all-you-need/manifest.json`
+- `sample_packages/attention-is-all-you-need/questions.json`
+
+### 2. Start the local API
+
+```bash
+make run-api
+```
+
+Keep that process running in one terminal.
+In a second terminal, upload the sample paper:
+
+```bash
+curl --fail --show-error -X POST \
+  -F "file=@data/raw/attention-is-all-you-need.pdf;type=application/pdf" \
+  http://127.0.0.1:8000/upload
+```
+
+Copy the returned `paper_id`.
+If you prefer the browser flow, open `http://127.0.0.1:8000` and upload the same file through the built-in web UI.
+
+### 3. Ask the packaged demo questions
+
+Use the sample package questions directly against `/ask`.
+Example:
+
+```bash
+curl --fail --show-error -X POST \
+  -H "Content-Type: application/json" \
+  -d '{
+    "paper_id": "<paper_id>",
+    "question": "What are the main components of the Transformer encoder and decoder?",
+    "top_k": 5,
+    "retrieval_mode": "hybrid"
+  }' \
+  http://127.0.0.1:8000/ask
+```
+
+Recommended live-demo sequence:
+
+1. motivation question
+2. architecture question
+3. results question
+
+Those prompts are already listed in `sample_packages/attention-is-all-you-need/questions.json`, along with the expected answer focus for each one.
+
+### 4. Inspect persisted paper metadata
+
+After upload, confirm the paper registry captured the paper and its ingestion metadata:
+
+```bash
+curl --fail --show-error http://127.0.0.1:8000/papers
+```
+
+For one paper specifically:
+
+```bash
+curl --fail --show-error http://127.0.0.1:8000/papers/<paper_id>/status
+```
+
+### 5. Run the reproducible evaluation pass
+
+The sample package is for ingestion and QA demos. For a stable metrics pass that works on a fresh machine, run the existing eval set:
+
+```bash
+make eval EVAL_CONFIG=configs/experiments/hybrid-retrieval.yaml
+```
+
+Then turn the latest `results.json` into a shareable summary:
+
+```bash
+make benchmark-report REPORT_RESULTS=artifacts/experiments/hybrid-retrieval/results.json
+```
+
+### 6. Optional: demo the notebook walkthrough
+
+For a shorter scripted walkthrough, open:
+
+- `notebooks/reliable_paper_copilot_demo.ipynb`
+
+That notebook uses a tiny generated PDF for portability, while the sample package above gives you a real-paper ingestion path for portfolio demos.
 
 ## Evaluation
 

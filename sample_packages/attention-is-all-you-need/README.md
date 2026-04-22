@@ -17,4 +17,26 @@ This package pins one open-access paper plus a few demo questions so the project
 
 - The repository does not redistribute the PDF directly.
 - Download the PDF from the `paper_url` in `manifest.json` before running a live demo.
-- Full step-by-step demo instructions are tracked separately in `PLANNING.md`.
+
+## Reproducible demo flow
+
+From the repository root:
+
+1. Download the tracked PDF:
+   ```bash
+   make fetch-sample-package
+   ```
+2. Start the app:
+   ```bash
+   make run-api
+   ```
+3. Upload `data/raw/attention-is-all-you-need.pdf` through the web UI or with:
+   ```bash
+   curl --fail --show-error -X POST \
+     -F "file=@data/raw/attention-is-all-you-need.pdf;type=application/pdf" \
+     http://127.0.0.1:8000/upload
+   ```
+4. Ask the demo questions from `questions.json` against `/ask`.
+5. Inspect `/papers` or `/papers/<paper_id>/status` to show persisted registry metadata.
+
+See the top-level `README.md` for the full end-to-end walkthrough, including evaluation and benchmark-report steps.
