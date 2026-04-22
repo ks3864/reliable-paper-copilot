@@ -55,7 +55,7 @@
 - [x] Add answerable-vs-unanswerable evaluation slice and refusal metrics
   - [x] Sub-task 1: add unanswerable eval examples plus core refusal and slice metrics in the evaluation pipeline
   - [x] Sub-task 2: surface answerable vs unanswerable results more clearly in benchmark/report outputs and docs
-- [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
+- [x] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
 - [ ] Add ingestion smoke tests and end-to-end API tests
 - [ ] Add Makefile / task runner for common workflows (ingest, eval, run-api, run-ui, compare-experiments)
 - [ ] Add one polished demo notebook showing ingestion -> retrieval -> answer -> evaluation
@@ -63,12 +63,11 @@
 - [ ] Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Current priority order
-1. Add benchmark report generation
-2. Add ingestion smoke tests and end-to-end API tests
-3. Add Makefile / task runner
-4. Add polished demo notebook
-5. Add sample real-paper package and reproducible demo instructions
-6. Add deployment notes for local + split-host browser-assisted workflows if needed
+1. Add ingestion smoke tests and end-to-end API tests
+2. Add Makefile / task runner
+3. Add polished demo notebook
+4. Add sample real-paper package and reproducible demo instructions
+5. Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Notes
 - Work on one item per session

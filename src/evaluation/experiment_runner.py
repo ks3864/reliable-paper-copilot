@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import time
 from copy import deepcopy
 from datetime import datetime, timezone
 from pathlib import Path
@@ -14,6 +15,7 @@ from data.eval.eval_set import EVAL_QA_PAIRS, get_eval_chunks, save_eval_set
 
 from .judge import AnswerQualityJudge, create_mock_judge_callable
 from .metrics import evaluate_all
+from .benchmark_report import render_benchmark_report_html, render_benchmark_report_markdown, summarize_benchmark_run
 
 
 ExperimentConfig = Dict[str, Any]
@@ -187,6 +189,15 @@ def persist_experiment_run(
     }
     (run_dir / "results.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
     (run_dir / "summary.md").write_text(_build_summary_text(experiment_run), encoding="utf-8")
+    benchmark_summary = summarize_benchmark_run(experiment_run)
+    (run_dir / "benchmark_report.md").write_text(
+        render_benchmark_report_markdown(benchmark_summary),
+        encoding="utf-8",
+    )
+    (run_dir / "benchmark_report.html").write_text(
+        render_benchmark_report_html(benchmark_summary),
+        encoding="utf-8",
+    )
     return run_dir
 
 
@@ -232,7 +243,9 @@ def run_experiment(
     results = []
     top_k = int(config["evaluation"].get("top_k", 5))
     for qa in EVAL_QA_PAIRS:
+        started_at = time.perf_counter()
         answer = generator.answer(qa["question"], top_k=top_k)
+        answer["latency_ms"] = round((time.perf_counter() - started_at) * 1000, 3)
         results.append(answer)
 
     metrics = evaluate_all(results, EVAL_QA_PAIRS, judge=judge)
