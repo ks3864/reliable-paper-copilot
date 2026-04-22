@@ -1,0 +1,17 @@
+[
+  {
+    "id": "motivation",
+    "question": "What modeling bottleneck do the authors identify in recurrent sequence models?",
+    "expected_focus": "The paper motivates replacing recurrence and convolution with attention for better parallelization and long-range dependency handling."
+  },
+  {
+    "id": "architecture",
+    "question": "What are the main components of the Transformer encoder and decoder?",
+    "expected_focus": "Multi-head self-attention, position-wise feed-forward layers, residual connections, normalization, and masked attention in the decoder."
+  },
+  {
+    "id": "results",
+    "question": "What headline results does the paper report for machine translation benchmarks?",
+    "expected_focus": "State-of-the-art BLEU performance on WMT 2014 English-to-German and English-to-French tasks with lower training cost."
+  }
+]

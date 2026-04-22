@@ -9,7 +9,7 @@ CANDIDATE ?=
 REPORT_RESULTS ?=
 PAPER ?=
 
-.PHONY: help install test run-api run-ui ingest-check ingest eval compare-experiments benchmark-report
+.PHONY: help install test run-api run-ui ingest-check ingest fetch-sample-package eval compare-experiments benchmark-report
 
 help:
 	@printf "Reliable Scientific Paper Copilot workflows\n\n"
@@ -18,6 +18,7 @@ help:
 	@printf "  make run-api                              Start the FastAPI app\n"
 	@printf "  make run-ui                               Start the app for browser UI work\n"
 	@printf "  make ingest PAPER=path/to/paper.pdf       Upload a PDF to the local API\n"
+	@printf "  make fetch-sample-package                 Download the tracked sample real-paper PDF\n"
 	@printf "  make eval [EVAL_CONFIG=... OUTPUT_DIR=...] Run the evaluation pipeline\n"
 	@printf "  make compare-experiments BASELINE=... CANDIDATE=...\n"
 	@printf "                                           Compare two results.json files\n"
@@ -49,6 +50,9 @@ ingest: ingest-check
 		-F "file=@$(PAPER);type=application/pdf" \
 		$(API_URL)/upload
 	@printf "\n"
+
+fetch-sample-package:
+	$(PYTHON) scripts/fetch_sample_package.py
 
 eval:
 	$(PYTHON) scripts/run_evaluation.py --config $(EVAL_CONFIG) --output-dir $(OUTPUT_DIR)

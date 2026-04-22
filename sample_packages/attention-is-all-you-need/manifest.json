@@ -1,0 +1,14 @@
+{
+  "package_id": "attention-is-all-you-need",
+  "title": "Attention Is All You Need",
+  "paper_url": "https://arxiv.org/pdf/1706.03762",
+  "landing_page_url": "https://arxiv.org/abs/1706.03762",
+  "citation": "Vaswani et al. (2017). Attention Is All You Need. arXiv:1706.03762.",
+  "license": "arXiv distribution; check paper terms before redistribution",
+  "description": "Open-access ML paper package for reproducible ingestion and QA demos.",
+  "expected_outputs": {
+    "raw_pdf": "data/raw/attention-is-all-you-need.pdf",
+    "demo_notes": "sample_packages/attention-is-all-you-need/README.md",
+    "demo_questions": "sample_packages/attention-is-all-you-need/questions.json"
+  }
+}
