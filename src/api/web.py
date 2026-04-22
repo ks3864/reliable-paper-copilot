@@ -214,6 +214,31 @@ WEB_UI_HTML = dedent(
           margin: 0;
           font-size: 0.95rem;
         }
+        .actions-row {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 10px;
+          margin: 16px 0 0;
+        }
+        .button-secondary {
+          background: #eef2ff;
+          color: #3730a3;
+          border: 1px solid #c7d2fe;
+        }
+        .button-secondary:hover {
+          background: #e0e7ff;
+        }
+        .brief-preview {
+          margin-top: 14px;
+          padding: 12px;
+          background: #111827;
+          color: #f9fafb;
+          border-radius: 10px;
+          overflow-x: auto;
+          font-size: 0.85rem;
+          line-height: 1.45;
+          white-space: pre-wrap;
+        }
         .detail-list {
           margin: 8px 0 0 0;
           padding-left: 18px;
@@ -273,6 +298,12 @@ WEB_UI_HTML = dedent(
               <div id="paper-summary" class="detail-grid"></div>
               <div id="paper-signals" class="detail-grid"></div>
               <div id="paper-notes" class="detail-grid"></div>
+              <div class="actions-row">
+                <button id="copy-brief-button" class="button-secondary" type="button">Copy paper brief</button>
+                <button id="download-brief-button" class="button-secondary" type="button">Download paper brief</button>
+                <span id="brief-status" class="status muted"></span>
+              </div>
+              <pre id="brief-preview" class="brief-preview" hidden></pre>
             </div>
             <div>
               <label for="paper-id">Paper</label>
@@ -355,6 +386,10 @@ WEB_UI_HTML = dedent(
         const evidenceEl = document.getElementById("evidence");
         const retrievalMetaEl = document.getElementById("retrieval-meta");
         const retrievalScoresEl = document.getElementById("retrieval-scores");
+        const copyBriefButton = document.getElementById("copy-brief-button");
+        const downloadBriefButton = document.getElementById("download-brief-button");
+        const briefStatus = document.getElementById("brief-status");
+        const briefPreview = document.getElementById("brief-preview");
         let paperRecords = [];
 
         function setStatus(element, message, kind = "muted") {
@@ -512,6 +547,139 @@ WEB_UI_HTML = dedent(
           }).join("");
         }
 
+        function resetBriefUi() {
+          setStatus(briefStatus, "", "muted");
+          briefPreview.hidden = true;
+          briefPreview.textContent = "";
+        }
+
+        function buildBriefMarkdown(brief) {
+          const overview = brief.overview || {};
+          const studySignals = brief.study_signals || {};
+          const ingestion = brief.ingestion || {};
+          const artifactValidation = ingestion.artifact_validation || {};
+          const provenance = ingestion.provenance || {};
+
+          const formatList = (items, fallback = "None") => {
+            if (!items || !items.length) {
+              return fallback;
+            }
+            return items.map((item) => `- ${item}`).join("\n");
+          };
+
+          const formatEntries = (entries) => {
+            const rows = Object.entries(entries || {});
+            if (!rows.length) {
+              return "None";
+            }
+            return rows.map(([key, value]) => `- ${key}: ${value}`).join("\n");
+          };
+
+          return [
+            `# ${brief.title || brief.paper_id}`,
+            "",
+            `- Paper ID: ${brief.paper_id}`,
+            `- Status: ${brief.status || "unknown"}`,
+            `- Original filename: ${brief.original_filename || "Unknown"}`,
+            `- Created: ${brief.created_at || "Unknown"}`,
+            "",
+            "## Overview",
+            `- Authors: ${(overview.authors || []).join(", ") || "Unknown"}`,
+            `- Pages: ${overview.page_count || 0}`,
+            `- Chunks: ${overview.num_chunks || 0}`,
+            `- Sections: ${overview.section_count || 0}`,
+            `- Tables: ${overview.tables_count || 0}`,
+            `- Total word count: ${overview.total_word_count || 0}`,
+            `- Section names: ${(overview.section_names || []).join(", ") || "None"}`,
+            `- Abstract preview: ${overview.abstract_preview || "Not available"}`,
+            "",
+            "## Study signals",
+            "### Datasets",
+            formatList(studySignals.datasets),
+            "",
+            "### Sample sizes",
+            formatList((studySignals.sample_sizes || []).map(String)),
+            "",
+            "### Limitations",
+            formatList(studySignals.limitations),
+            "",
+            "### Inclusion criteria",
+            formatList(studySignals.inclusion_criteria),
+            "",
+            "### Exclusion criteria",
+            formatList(studySignals.exclusion_criteria),
+            "",
+            "### Extracted counts",
+            formatEntries(studySignals.counts),
+            "",
+            "## Ingestion",
+            `- Artifacts complete: ${artifactValidation.all_required_present ? "yes" : "no"}`,
+            `- Missing required artifacts: ${(artifactValidation.missing_required || []).join(", ") || "None"}`,
+            `- Source label: ${provenance.source_label || "Unknown"}`,
+            `- Uploaded via: ${provenance.uploaded_via || "Unknown"}`,
+            `- Source URL: ${provenance.source_url || "Unknown"}`,
+            "",
+            "### Automated ingestion notes",
+            formatList(ingestion.ingestion_notes),
+            "",
+            "### Operator notes",
+            formatList(ingestion.operator_ingestion_notes),
+            "",
+            "### Chunking strategies",
+            formatEntries(overview.chunking_strategies),
+          ].join("\n");
+        }
+
+        async function fetchPaperBrief(paperId) {
+          const response = await fetch(`/papers/${paperId}/brief`);
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.detail || "Failed to load paper brief");
+          }
+          return payload;
+        }
+
+        async function handleBriefAction(action) {
+          const paperId = paperSelect.value;
+          if (!paperId) {
+            setStatus(briefStatus, "Select a paper first.", "error");
+            return;
+          }
+
+          copyBriefButton.disabled = true;
+          downloadBriefButton.disabled = true;
+          setStatus(briefStatus, "Preparing paper brief...", "muted");
+
+          try {
+            const brief = await fetchPaperBrief(paperId);
+            const briefMarkdown = buildBriefMarkdown(brief);
+            briefPreview.textContent = briefMarkdown;
+            briefPreview.hidden = false;
+
+            if (action === "copy") {
+              await navigator.clipboard.writeText(briefMarkdown);
+              setStatus(briefStatus, "Paper brief copied to clipboard.", "success");
+              return;
+            }
+
+            const blob = new Blob([briefMarkdown], { type: "text/markdown;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = `${brief.paper_id}-paper-brief.md`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+          } catch (error) {
+            setStatus(briefStatus, error.message, "error");
+          } finally {
+            copyBriefButton.disabled = false;
+            downloadBriefButton.disabled = false;
+          }
+        }
+
         function updatePaperDetails(paperId) {
           const paper = paperRecords.find((item) => item.paper_id === paperId);
           if (!paper) {
@@ -519,6 +687,7 @@ WEB_UI_HTML = dedent(
             paperSummary.innerHTML = "";
             paperSignals.innerHTML = "";
             paperNotes.innerHTML = "";
+            resetBriefUi();
             return;
           }
 
@@ -569,6 +738,7 @@ WEB_UI_HTML = dedent(
           ].join("");
 
           paperDetails.hidden = false;
+          resetBriefUi();
         }
 
         async function refreshPapers(selectedPaperId = "") {
@@ -603,6 +773,14 @@ WEB_UI_HTML = dedent(
 
         paperSelect.addEventListener("change", (event) => {
           updatePaperDetails(event.target.value);
+        });
+
+        copyBriefButton.addEventListener("click", async () => {
+          await handleBriefAction("copy");
+        });
+
+        downloadBriefButton.addEventListener("click", async () => {
+          await handleBriefAction("download");
         });
 
         uploadForm.addEventListener("submit", async (event) => {

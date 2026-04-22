@@ -69,10 +69,10 @@
 ## Phase 5 — Demo Ergonomics
 - [x] Add a demo-ready paper brief export endpoint
   - [x] Sub-task 1: add a compact `/papers/{paper_id}/brief` API view for summary metadata, study signals, and ingestion context
-  - [ ] Sub-task 2: add a UI action to copy or download the paper brief for demos
+  - [x] Sub-task 2: add a UI action to copy or download the paper brief for demos
 
 ## Current priority order
-1. Add a UI action to copy or download the paper brief for demos.
+1. All currently planned items are complete. Add the next backlog item before the next build session.
 
 ## Notes
 - Work on one item per session
