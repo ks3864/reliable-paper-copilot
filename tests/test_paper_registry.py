@@ -207,6 +207,43 @@ class PaperRegistryTests(unittest.TestCase):
             self.assertEqual(validated["artifact_validation"]["missing_required"], [])
             self.assertFalse(validated["artifact_validation"]["artifacts"]["index_path"]["exists"])
 
+    def test_paper_registry_can_delete_record_and_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            raw_path = tmp_path / "paper.pdf"
+            parsed_path = tmp_path / "paper_parsed.json"
+            chunks_path = tmp_path / "paper_chunks.json"
+            index_path = tmp_path / "paper_index.faiss"
+            raw_path.write_bytes(b"%PDF-1.4")
+            parsed_path.write_text("{}", encoding="utf-8")
+            chunks_path.write_text('{"chunks": []}', encoding="utf-8")
+            index_path.write_bytes(b"index")
+
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-delete",
+                    "title": "Delete Me",
+                    "status": "ready",
+                    "num_chunks": 0,
+                    "raw_pdf_path": str(raw_path),
+                    "parsed_path": str(parsed_path),
+                    "chunks_path": str(chunks_path),
+                    "index_path": str(index_path),
+                    "created_at": "2026-04-22T20:16:00Z",
+                }
+            )
+
+            deleted = registry.delete_paper("paper-delete")
+
+            self.assertIsNotNone(deleted)
+            self.assertEqual(deleted["paper_id"], "paper-delete")
+            self.assertIsNone(registry.get_paper("paper-delete"))
+            self.assertFalse(raw_path.exists())
+            self.assertFalse(parsed_path.exists())
+            self.assertFalse(chunks_path.exists())
+            self.assertFalse(index_path.exists())
+
 
 @unittest.skipIf(TestClient is None or api_main is None, "fastapi is not installed")
 class PaperRegistryApiTests(unittest.TestCase):
@@ -784,6 +821,57 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertEqual(logged_event["endpoint"], "/ask")
             self.assertEqual(logged_event["paper_id"], paper_id)
             self.assertEqual(logged_event["extra"]["num_chunks_retrieved"], 2)
+
+    def test_delete_route_removes_registry_record_cache_and_artifacts(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            raw_path = tmp_path / "paper.pdf"
+            parsed_path = tmp_path / "paper_parsed.json"
+            chunks_path = tmp_path / "paper_chunks.json"
+            index_path = tmp_path / "paper_index.faiss"
+            raw_path.write_bytes(b"%PDF-1.4")
+            parsed_path.write_text("{}", encoding="utf-8")
+            chunks_path.write_text('{"chunks": []}', encoding="utf-8")
+            index_path.write_bytes(b"index")
+
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-delete-api",
+                    "title": "Delete API Paper",
+                    "status": "ready",
+                    "num_chunks": 0,
+                    "raw_pdf_path": str(raw_path),
+                    "parsed_path": str(parsed_path),
+                    "chunks_path": str(chunks_path),
+                    "index_path": str(index_path),
+                    "created_at": "2026-04-22T20:16:00Z",
+                }
+            )
+
+            cached_papers = {
+                "paper-delete-api": {
+                    "paper_id": "paper-delete-api",
+                    "status": "ready",
+                    "num_chunks": 0,
+                }
+            }
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(api_main, "PAPERS", cached_papers):
+                client = TestClient(api_main.app)
+                response = client.delete("/papers/paper-delete-api")
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload["paper_id"], "paper-delete-api")
+            self.assertTrue(payload["deleted"])
+            self.assertIn("raw_pdf_path", payload["deleted_artifacts"])
+            self.assertIsNone(registry.get_paper("paper-delete-api"))
+            self.assertNotIn("paper-delete-api", cached_papers)
+            self.assertFalse(raw_path.exists())
+            self.assertFalse(parsed_path.exists())
+            self.assertFalse(chunks_path.exists())
+            self.assertFalse(index_path.exists())
 
 
 if __name__ == "__main__":

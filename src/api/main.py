@@ -119,6 +119,12 @@ class PaperBrief(BaseModel):
     ingestion: Dict[str, Any]
 
 
+class PaperDeleteResponse(BaseModel):
+    paper_id: str
+    deleted: bool
+    deleted_artifacts: List[str] = []
+
+
 @app.get("/", response_class=HTMLResponse)
 async def web_ui():
     """Serve a lightweight browser UI for uploading papers and asking questions."""
@@ -525,6 +531,29 @@ async def update_paper_metadata(paper_id: str, request: PaperMetadataUpdateReque
         operator_ingestion_notes=updated.get("operator_ingestion_notes", []),
         provenance=updated.get("provenance"),
         summary_metadata=updated.get("summary_metadata"),
+    )
+
+
+@app.delete("/papers/{paper_id}", response_model=PaperDeleteResponse)
+async def delete_paper(paper_id: str):
+    """Delete a paper from the registry and remove persisted artifacts when present."""
+    deleted = PAPER_REGISTRY.delete_paper(paper_id, delete_artifacts=True)
+    if deleted is None:
+        raise HTTPException(status_code=404, detail="Paper not found")
+
+    PAPERS.pop(paper_id, None)
+
+    deleted_artifacts = []
+    artifact_validation = deleted.get("artifact_validation") or {}
+    for field, metadata in (artifact_validation.get("artifacts") or {}).items():
+        path_value = metadata.get("path")
+        if path_value:
+            deleted_artifacts.append(field)
+
+    return PaperDeleteResponse(
+        paper_id=paper_id,
+        deleted=True,
+        deleted_artifacts=deleted_artifacts,
     )
 
 

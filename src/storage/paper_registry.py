@@ -198,6 +198,33 @@ class PaperRegistry:
         self._write(payload)
         return self._with_artifact_validation(paper)
 
+    def delete_paper(self, paper_id: str, *, delete_artifacts: bool = True) -> Optional[Dict[str, Any]]:
+        """Delete a paper record and optionally remove any persisted artifacts from disk."""
+        payload = self._read()
+        paper = payload.get("papers", {}).get(paper_id)
+        if paper is None:
+            return None
+
+        deleted_record = self._with_artifact_validation(paper)
+
+        if delete_artifacts:
+            seen_paths = set()
+            for field in self.ARTIFACT_PATH_FIELDS:
+                path_value = paper.get(field)
+                if not path_value or path_value in seen_paths:
+                    continue
+                seen_paths.add(path_value)
+                try:
+                    Path(path_value).unlink(missing_ok=True)
+                except IsADirectoryError:
+                    continue
+                except OSError:
+                    continue
+
+        payload.get("papers", {}).pop(paper_id, None)
+        self._write(payload)
+        return deleted_record
+
     def _read(self) -> Dict[str, Any]:
         return load_json(str(self.registry_path))
 
