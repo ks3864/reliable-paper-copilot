@@ -1,6 +1,8 @@
 import json
+import os
 import tempfile
 import unittest
+from contextlib import contextmanager
 from pathlib import Path
 from unittest.mock import patch
 
@@ -17,6 +19,16 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - optional dependency in local tests
     TestClient = None
     api_main = None
+
+
+@contextmanager
+def temporary_cwd(path: Path):
+    previous = Path.cwd()
+    os.chdir(path)
+    try:
+        yield
+    finally:
+        os.chdir(previous)
 
 
 class PaperRegistryTests(unittest.TestCase):
@@ -198,6 +210,93 @@ class PaperRegistryTests(unittest.TestCase):
 
 @unittest.skipIf(TestClient is None or api_main is None, "fastapi is not installed")
 class PaperRegistryApiTests(unittest.TestCase):
+    def test_upload_route_smoke_persists_artifacts_and_registry_metadata(self):
+        class StubRetriever:
+            def __init__(self):
+                self.index = None
+                self.use_lexical_fallback = True
+
+        parsed = {
+            "metadata": {
+                "title": "Smoke Tested Paper",
+                "authors": ["Ada Lovelace"],
+                "abstract": "We evaluated the MIMIC-III cohort with 120 patients.",
+                "page_count": 1,
+            },
+            "pages": [
+                {
+                    "page_number": 1,
+                    "text": "Abstract\nWe evaluated the MIMIC-III cohort with 120 patients.",
+                    "tables": [],
+                    "word_count": 10,
+                }
+            ],
+        }
+        chunks = [
+            {
+                "chunk_id": 0,
+                "section": "abstract",
+                "text": "We evaluated the MIMIC-III cohort with 120 patients.",
+                "metadata": {
+                    "source": "Smoke Tested Paper",
+                    "chunking_strategy": "section",
+                    "page_numbers": [1],
+                    "page_start": 1,
+                    "page_end": 1,
+                },
+            }
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+
+            with temporary_cwd(tmp_path), patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
+                api_main, "PAPERS", {}
+            ), patch.object(api_main, "parse_pdf", return_value=parsed), patch.object(
+                api_main, "chunk_by_sections", return_value=chunks
+            ), patch.object(api_main, "create_retriever", return_value=StubRetriever()):
+                client = TestClient(api_main.app)
+                response = client.post(
+                    "/upload",
+                    files={"file": ("smoke-paper.pdf", b"%PDF-1.4\n%stub pdf bytes\n", "application/pdf")},
+                )
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload["title"], "Smoke Tested Paper")
+            self.assertEqual(payload["status"], "ready")
+            self.assertEqual(payload["num_chunks"], 1)
+            self.assertTrue(any("MIMIC-III" in note for note in payload["ingestion_notes"]))
+            self.assertEqual(payload["summary_metadata"]["extracted_summary"]["sample_sizes"], [120])
+
+            stored_record = registry.get_paper(payload["paper_id"])
+            self.assertIsNotNone(stored_record)
+            self.assertTrue(Path(stored_record["raw_pdf_path"]).exists())
+            self.assertTrue(Path(stored_record["parsed_path"]).exists())
+            self.assertTrue(Path(stored_record["chunks_path"]).exists())
+            self.assertEqual(stored_record["original_filename"], "smoke-paper.pdf")
+            self.assertEqual(stored_record["file_size_bytes"], len(b"%PDF-1.4\n%stub pdf bytes\n"))
+            self.assertEqual(stored_record["summary_metadata"]["authors"], ["Ada Lovelace"])
+            self.assertFalse(Path(stored_record["index_path"]).exists())
+            self.assertIn(payload["paper_id"], api_main.PAPERS)
+
+    def test_upload_route_rejects_non_pdf_files(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            registry = PaperRegistry(Path(tmpdir) / "papers" / "registry.json")
+            with temporary_cwd(Path(tmpdir)), patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
+                api_main, "PAPERS", {}
+            ):
+                client = TestClient(api_main.app)
+                response = client.post(
+                    "/upload",
+                    files={"file": ("notes.txt", b"not a pdf", "text/plain")},
+                )
+
+            self.assertEqual(response.status_code, 400)
+            self.assertEqual(response.json()["detail"], "File must be a PDF")
+            self.assertEqual(registry.list_papers(), [])
+
     def test_list_and_status_routes_read_from_persistent_registry(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             registry = PaperRegistry(Path(tmpdir) / "papers" / "registry.json")

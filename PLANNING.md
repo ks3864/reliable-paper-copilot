@@ -57,6 +57,8 @@
   - [x] Sub-task 2: surface answerable vs unanswerable results more clearly in benchmark/report outputs and docs
 - [x] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
 - [ ] Add ingestion smoke tests and end-to-end API tests
+  - [x] Sub-task 1: add upload and ingestion smoke coverage for artifact persistence and registry metadata
+  - [ ] Sub-task 2: add broader end-to-end API workflow coverage for upload -> ask -> status flows
 - [ ] Add Makefile / task runner for common workflows (ingest, eval, run-api, run-ui, compare-experiments)
 - [ ] Add one polished demo notebook showing ingestion -> retrieval -> answer -> evaluation
 - [ ] Add sample real-paper package and reproducible demo instructions
