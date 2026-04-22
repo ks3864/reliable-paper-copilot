@@ -74,8 +74,11 @@
   - [x] Sub-task 1: add a registry-backed API delete route that removes persisted paper artifacts and clears cached paper state
   - [x] Sub-task 2: add a web UI delete action with confirmation and refresh the paper list after deletion
 
+## Phase 6 — Reproducibility and Dev Ergonomics
+- [x] Make the pytest suite runnable from a fresh checkout without manual `PYTHONPATH` setup
+
 ## Current priority order
-1. No remaining planned items. Next session should add a new highest-priority portfolio-hardening or demo-focused backlog item before implementation.
+1. Add a demo script or Make target that runs the sample-package ingest and asks a canned demo question end-to-end.
 
 ## Notes
 - Work on one item per session
