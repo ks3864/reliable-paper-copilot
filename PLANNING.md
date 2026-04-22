@@ -44,10 +44,11 @@
     - [x] Sub-task 3a: persist extractor-derived study summary fields and ingestion-note hints in registry metadata
     - [x] Sub-task 3b: add paper-level operator-editable ingestion notes and provenance fields
     - [x] Sub-task 3c: surface richer paper metadata more clearly in the web UI
-- [ ] Add hybrid retrieval (BM25 + dense retrieval fusion)
+- [x] Add hybrid retrieval (BM25 + dense retrieval fusion)
   - [x] Sub-task 1: add retriever-level hybrid rank fusion between dense and lexical candidates
   - [x] Sub-task 2: expose hybrid retrieval settings through API/eval configs and surface scores in artifacts
   - [x] Sub-task 3: upgrade lexical retrieval from token overlap to BM25 scoring for stronger hybrid fusion
+  - [x] Sub-task 4: expose hybrid retrieval controls and score breakdowns in the web UI for demos/debugging
 - [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
 - [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
@@ -58,15 +59,14 @@
 - [ ] Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Current priority order
-1. Add hybrid retrieval (BM25 + dense retrieval fusion)
-2. Add citation span highlighting and page-aware evidence formatting in API/UI responses
-3. Add answerable-vs-unanswerable evaluation slice and refusal metrics
-4. Add benchmark report generation
-5. Add ingestion smoke tests and end-to-end API tests
-6. Add Makefile / task runner
-7. Add polished demo notebook
-8. Add sample real-paper package and reproducible demo instructions
-9. Add deployment notes for local + split-host browser-assisted workflows if needed
+1. Add citation span highlighting and page-aware evidence formatting in API/UI responses
+2. Add answerable-vs-unanswerable evaluation slice and refusal metrics
+3. Add benchmark report generation
+4. Add ingestion smoke tests and end-to-end API tests
+5. Add Makefile / task runner
+6. Add polished demo notebook
+7. Add sample real-paper package and reproducible demo instructions
+8. Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Notes
 - Work on one item per session

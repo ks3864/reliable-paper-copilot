@@ -102,6 +102,40 @@ WEB_UI_HTML = dedent(
           padding: 16px;
           border: 1px solid #e5e7eb;
         }
+        .control-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 12px;
+        }
+        input[type="number"] {
+          width: 100%;
+          box-sizing: border-box;
+          border: 1px solid #d1d5db;
+          border-radius: 10px;
+          padding: 12px;
+          background: white;
+        }
+        .score-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 12px;
+          font-size: 0.95rem;
+        }
+        .score-table th,
+        .score-table td {
+          border-bottom: 1px solid #e5e7eb;
+          padding: 10px 8px;
+          text-align: left;
+          vertical-align: top;
+        }
+        .score-table th {
+          background: #f9fafb;
+          font-weight: 600;
+        }
+        .score-table code {
+          display: inline-block;
+          margin-top: 4px;
+        }
         .paper-details {
           margin-top: 16px;
           padding: 16px;
@@ -200,6 +234,32 @@ WEB_UI_HTML = dedent(
               <label for="question">Question</label>
               <textarea id="question" placeholder="What dataset was used, and what limitations did the authors mention?" required></textarea>
             </div>
+            <div class="control-grid">
+              <div>
+                <label for="retrieval-mode">Retrieval mode</label>
+                <select id="retrieval-mode">
+                  <option value="dense">Dense</option>
+                  <option value="lexical">Lexical (BM25)</option>
+                  <option value="hybrid">Hybrid fusion</option>
+                </select>
+              </div>
+              <div>
+                <label for="top-k">Top K chunks</label>
+                <input id="top-k" type="number" min="1" max="10" value="5" />
+              </div>
+              <div>
+                <label for="dense-weight">Dense weight</label>
+                <input id="dense-weight" type="number" min="0" step="0.1" value="1.0" />
+              </div>
+              <div>
+                <label for="lexical-weight">Lexical weight</label>
+                <input id="lexical-weight" type="number" min="0" step="0.1" value="1.0" />
+              </div>
+              <div>
+                <label for="rrf-k">RRF k</label>
+                <input id="rrf-k" type="number" min="1" step="1" value="60" />
+              </div>
+            </div>
             <button id="ask-button" type="submit">Ask</button>
             <div id="ask-status" class="status muted"></div>
           </form>
@@ -208,6 +268,18 @@ WEB_UI_HTML = dedent(
             <div id="answer" class="answer"></div>
             <h3>Sources</h3>
             <ul id="sources"></ul>
+            <h3>Retrieval score breakdown</h3>
+            <div id="retrieval-meta" class="muted"></div>
+            <table id="retrieval-scores-table" class="score-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Section</th>
+                  <th>Scores</th>
+                </tr>
+              </thead>
+              <tbody id="retrieval-scores"></tbody>
+            </table>
           </div>
         </section>
       </main>
@@ -228,6 +300,8 @@ WEB_UI_HTML = dedent(
         const answerPanel = document.getElementById("answer-panel");
         const answerEl = document.getElementById("answer");
         const sourcesEl = document.getElementById("sources");
+        const retrievalMetaEl = document.getElementById("retrieval-meta");
+        const retrievalScoresEl = document.getElementById("retrieval-scores");
         let paperRecords = [];
 
         function setStatus(element, message, kind = "muted") {
@@ -264,6 +338,42 @@ WEB_UI_HTML = dedent(
             return `<p class="muted">${emptyMessage}</p>`;
           }
           return `<div class="chips">${items.map((item) => `<span class="chip">${item}</span>`).join("")}</div>`;
+        }
+
+        function formatScore(value) {
+          if (value === null || value === undefined) {
+            return "n/a";
+          }
+          return Number(value).toFixed(4);
+        }
+
+        function renderRetrievalScores(payload) {
+          const retrievalScores = payload.retrieval_scores || [];
+          retrievalMetaEl.textContent = `Mode: ${payload.retrieval_mode || "dense"}, chunks returned: ${payload.num_chunks_retrieved || 0}`;
+
+          if (!retrievalScores.length) {
+            retrievalScoresEl.innerHTML = '<tr><td colspan="3" class="muted">No retrieval score details available.</td></tr>';
+            return;
+          }
+
+          retrievalScoresEl.innerHTML = retrievalScores.map((chunk) => {
+            const scoreLines = [
+              `retrieval=${formatScore(chunk.retrieval_score)}`,
+              chunk.hybrid_score !== null && chunk.hybrid_score !== undefined ? `hybrid=${formatScore(chunk.hybrid_score)}` : null,
+              chunk.dense_score !== null && chunk.dense_score !== undefined ? `dense=${formatScore(chunk.dense_score)}` : null,
+              chunk.lexical_score !== null && chunk.lexical_score !== undefined ? `lexical=${formatScore(chunk.lexical_score)}` : null,
+              chunk.dense_rank ? `dense rank=${chunk.dense_rank}` : null,
+              chunk.lexical_rank ? `lexical rank=${chunk.lexical_rank}` : null,
+            ].filter(Boolean);
+
+            return `
+              <tr>
+                <td>${chunk.rank || "-"}</td>
+                <td>${chunk.section || "unknown"}<br /><code>chunk ${chunk.chunk_id ?? "?"}</code></td>
+                <td>${scoreLines.map((line) => `<div>${line}</div>`).join("")}</td>
+              </tr>
+            `;
+          }).join("");
         }
 
         function updatePaperDetails(paperId) {
@@ -394,6 +504,11 @@ WEB_UI_HTML = dedent(
           event.preventDefault();
           const paperId = paperSelect.value;
           const question = document.getElementById("question").value.trim();
+          const retrievalMode = document.getElementById("retrieval-mode").value;
+          const topK = Number(document.getElementById("top-k").value || 5);
+          const denseWeight = Number(document.getElementById("dense-weight").value || 1.0);
+          const lexicalWeight = Number(document.getElementById("lexical-weight").value || 1.0);
+          const rrfK = Number(document.getElementById("rrf-k").value || 60);
 
           if (!paperId || !question) {
             setStatus(askStatus, "Select a paper and enter a question.", "error");
@@ -408,7 +523,15 @@ WEB_UI_HTML = dedent(
             const response = await fetch("/ask", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ paper_id: paperId, question }),
+              body: JSON.stringify({
+                paper_id: paperId,
+                question,
+                top_k: topK,
+                retrieval_mode: retrievalMode,
+                dense_weight: denseWeight,
+                lexical_weight: lexicalWeight,
+                rrf_k: rrfK,
+              }),
             });
             const payload = await response.json();
             if (!response.ok) {
@@ -417,13 +540,14 @@ WEB_UI_HTML = dedent(
 
             answerEl.textContent = payload.answer;
             sourcesEl.innerHTML = "";
+            renderRetrievalScores(payload);
             for (const source of payload.sources || []) {
               const item = document.createElement("li");
               item.textContent = source;
               sourcesEl.appendChild(item);
             }
             answerPanel.hidden = false;
-            setStatus(askStatus, `Answered using ${payload.num_chunks_retrieved} retrieved chunk(s).`, "success");
+            setStatus(askStatus, `Answered with ${payload.retrieval_mode || "dense"} retrieval using ${payload.num_chunks_retrieved} retrieved chunk(s).`, "success");
           } catch (error) {
             setStatus(askStatus, error.message, "error");
           } finally {

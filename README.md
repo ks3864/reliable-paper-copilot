@@ -10,7 +10,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **Cross-Encoder Reranking**: Reorder retrieved passages with a higher-precision reranker
 - **Grounded Generation**: Answer questions with citations from the paper
 - **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
-- **Lightweight Web UI**: Browser-based upload and Q&A workflow served directly by the FastAPI app
+- **Lightweight Web UI**: Browser-based upload and Q&A workflow served directly by the FastAPI app, including dense, lexical, and hybrid retrieval controls plus per-chunk score breakdowns
 - **Persistent Paper Registry**: Stored paper metadata now includes artifact validation summaries and file size metadata for uploaded PDFs
 
 ## Architecture
@@ -76,7 +76,7 @@ The API will be available at `http://localhost:8000`, and local `./data` is moun
 - `retrieval_mode`: `dense`, `lexical`, or `hybrid`
 - `dense_weight`, `lexical_weight`, `rrf_k`: hybrid fusion settings
 
-The response now includes `retrieval_mode` plus `retrieval_scores` entries with per-chunk rank and dense, lexical, or hybrid score fields when available.
+The response now includes `retrieval_mode` plus `retrieval_scores` entries with per-chunk rank and dense, lexical, or hybrid score fields when available. The built-in web UI also exposes these retrieval controls and shows the returned score breakdown for debugging and demos.
 
 ## Project Structure
 

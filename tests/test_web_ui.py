@@ -19,6 +19,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("Upload a PDF", response.text)
         self.assertIn("Ask a question", response.text)
         self.assertIn("Selected paper details", response.text)
+        self.assertIn("Retrieval mode", response.text)
+        self.assertIn("Hybrid fusion", response.text)
 
     def test_web_ui_surfaces_richer_paper_metadata_sections(self):
         response = self.client.get("/")
@@ -37,6 +39,9 @@ class WebUITests(unittest.TestCase):
         self.assertIn('fetch("/papers"', response.text)
         self.assertIn('fetch("/health"', response.text)
         self.assertIn('paperSelect.addEventListener("change"', response.text)
+        self.assertIn('retrieval_mode: retrievalMode', response.text)
+        self.assertIn('renderRetrievalScores(payload)', response.text)
+        self.assertIn('id="retrieval-scores-table"', response.text)
 
 
 if __name__ == "__main__":
