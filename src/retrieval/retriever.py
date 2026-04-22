@@ -1,4 +1,4 @@
-"""Embedding-based retrieval with optional fallback lexical scoring."""
+"""Embedding-based retrieval with optional hybrid lexical fusion."""
 
 from __future__ import annotations
 
@@ -28,17 +28,37 @@ from .reranker import BaseReranker
 class Retriever:
     """FAISS-based retriever for paper chunks."""
 
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2", reranker: Optional[BaseReranker] = None):
+    def __init__(
+        self,
+        model_name: str = "all-MiniLM-L6-v2",
+        reranker: Optional[BaseReranker] = None,
+        retrieval_mode: str = "dense",
+        lexical_weight: float = 1.0,
+        dense_weight: float = 1.0,
+        rrf_k: int = 60,
+    ):
         """
         Initialize retriever with embedding model.
 
         Args:
             model_name: Name of sentence-transformers model
             reranker: Optional reranker applied after vector search
+            retrieval_mode: dense, lexical, or hybrid
+            lexical_weight: Weight applied to lexical rank contribution in hybrid mode
+            dense_weight: Weight applied to dense rank contribution in hybrid mode
+            rrf_k: Reciprocal-rank-fusion smoothing constant
         """
+        valid_modes = {"dense", "lexical", "hybrid"}
+        if retrieval_mode not in valid_modes:
+            raise ValueError(f"Unsupported retrieval_mode: {retrieval_mode}. Expected one of {sorted(valid_modes)}")
+
         self.model_name = model_name
         self.model = SentenceTransformer(model_name) if SentenceTransformer is not None else None
         self.reranker = reranker
+        self.retrieval_mode = retrieval_mode
+        self.lexical_weight = lexical_weight
+        self.dense_weight = dense_weight
+        self.rrf_k = rrf_k
         self.index: Optional[faiss.Index] = None
         self.chunks: List[Dict[str, Any]] = []
         self.chunk_embeddings: Optional[np.ndarray] = None
@@ -85,6 +105,19 @@ class Retriever:
         Returns:
             List of chunk dictionaries with similarity scores and optional reranker scores.
         """
+        if self.retrieval_mode == "lexical":
+            results = self._retrieve_lexically(query, top_k=top_k)
+        elif self.retrieval_mode == "hybrid":
+            results = self._retrieve_hybrid(query, top_k=top_k, rerank_top_k=rerank_top_k)
+        else:
+            results = self._retrieve_dense(query, top_k=top_k, rerank_top_k=rerank_top_k)
+
+        if self.reranker is not None and results:
+            return self.reranker.rerank(query, results, top_k=top_k)
+
+        return results[:top_k]
+
+    def _retrieve_dense(self, query: str, top_k: int = 5, rerank_top_k: Optional[int] = None) -> List[Dict[str, Any]]:
         if self.index is None:
             if self.use_lexical_fallback:
                 return self._retrieve_lexically(query, top_k=top_k)
@@ -101,14 +134,12 @@ class Retriever:
         for i, (score, idx) in enumerate(zip(scores[0], indices[0])):
             if idx >= 0:
                 chunk = self.chunks[idx].copy()
+                chunk["dense_score"] = float(score)
                 chunk["retrieval_score"] = float(score)
                 chunk["rank"] = i + 1
                 results.append(chunk)
 
-        if self.reranker is not None and results:
-            return self.reranker.rerank(query, results, top_k=top_k)
-
-        return results[:top_k]
+        return results
 
     def _retrieve_lexically(self, query: str, top_k: int = 5) -> List[Dict[str, Any]]:
         query_terms = set(re.findall(r"\w+", query.lower()))
@@ -119,6 +150,7 @@ class Retriever:
             overlap = query_terms & chunk_terms
             score = len(overlap) / max(len(query_terms), 1)
             updated = dict(chunk)
+            updated["lexical_score"] = float(score)
             updated["retrieval_score"] = float(score)
             scored.append(updated)
 
@@ -126,10 +158,45 @@ class Retriever:
         for rank, chunk in enumerate(scored, start=1):
             chunk["rank"] = rank
 
-        results = scored[:top_k]
-        if self.reranker is not None and results:
-            return self.reranker.rerank(query, results, top_k=top_k)
-        return results
+        return scored[:top_k]
+
+    def _retrieve_hybrid(self, query: str, top_k: int = 5, rerank_top_k: Optional[int] = None) -> List[Dict[str, Any]]:
+        candidate_k = max(rerank_top_k or top_k, top_k)
+        dense_results = self._retrieve_dense(query, top_k=candidate_k, rerank_top_k=rerank_top_k)
+        lexical_results = self._retrieve_lexically(query, top_k=candidate_k)
+
+        fused: Dict[Any, Dict[str, Any]] = {}
+        for rank, chunk in enumerate(dense_results, start=1):
+            key = chunk.get("chunk_id", rank)
+            fused[key] = {**chunk, "dense_rank": rank, "hybrid_score": self._rrf(rank, self.dense_weight)}
+
+        for rank, chunk in enumerate(lexical_results, start=1):
+            key = chunk.get("chunk_id", rank)
+            existing = fused.get(key, dict(chunk))
+            existing.setdefault("dense_score", None)
+            existing["lexical_score"] = chunk.get("lexical_score", chunk.get("retrieval_score"))
+            existing["lexical_rank"] = rank
+            existing["hybrid_score"] = existing.get("hybrid_score", 0.0) + self._rrf(rank, self.lexical_weight)
+            fused[key] = existing
+
+        ranked = sorted(
+            fused.values(),
+            key=lambda chunk: (
+                chunk.get("hybrid_score", 0.0),
+                chunk.get("dense_score") if chunk.get("dense_score") is not None else -1.0,
+                chunk.get("lexical_score", 0.0),
+            ),
+            reverse=True,
+        )
+
+        for rank, chunk in enumerate(ranked, start=1):
+            chunk["retrieval_score"] = float(chunk.get("hybrid_score", 0.0))
+            chunk["rank"] = rank
+
+        return ranked[:top_k]
+
+    def _rrf(self, rank: int, weight: float) -> float:
+        return float(weight) / float(self.rrf_k + rank)
 
     def save(self, index_path: str, chunks_path: str) -> None:
         """Save index and chunks to disk."""
@@ -175,9 +242,20 @@ def create_retriever(
     chunks: List[Dict[str, Any]],
     model_name: str = "all-MiniLM-L6-v2",
     reranker: Optional[BaseReranker] = None,
+    retrieval_mode: str = "dense",
+    lexical_weight: float = 1.0,
+    dense_weight: float = 1.0,
+    rrf_k: int = 60,
 ) -> Retriever:
     """Create and build a retriever from chunks."""
-    retriever = Retriever(model_name=model_name, reranker=reranker)
+    retriever = Retriever(
+        model_name=model_name,
+        reranker=reranker,
+        retrieval_mode=retrieval_mode,
+        lexical_weight=lexical_weight,
+        dense_weight=dense_weight,
+        rrf_k=rrf_k,
+    )
     retriever.build_index(chunks)
     return retriever
 

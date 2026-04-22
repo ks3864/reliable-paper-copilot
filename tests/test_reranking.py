@@ -169,6 +169,39 @@ class RetrievalRerankingTests(unittest.TestCase):
         self.assertEqual([chunk["chunk_id"] for chunk in results], [0, 1])
         self.assertTrue(all("reranker_score" not in chunk for chunk in results))
 
+    def test_hybrid_retrieval_fuses_dense_and_lexical_signals(self):
+        retriever = Retriever(retrieval_mode="hybrid")
+        retriever.build_index(
+            [
+                {"chunk_id": 0, "section": "abstract", "text": "General discussion without the key phrase.", "metadata": {}},
+                {"chunk_id": 1, "section": "methods", "text": "Dataset construction details for the medical cohort.", "metadata": {}},
+                {"chunk_id": 2, "section": "results", "text": "Benchmark dataset performance is summarized here.", "metadata": {}},
+            ]
+        )
+
+        results = retriever.retrieve("What dataset was used?", top_k=3)
+
+        self.assertEqual([chunk["chunk_id"] for chunk in results], [1, 0, 2])
+        self.assertAlmostEqual(results[0]["dense_rank"], 2)
+        self.assertAlmostEqual(results[0]["lexical_rank"], 1)
+        self.assertIn("hybrid_score", results[0])
+        self.assertIn("dense_score", results[0])
+        self.assertIn("lexical_score", results[0])
+
+    def test_hybrid_mode_uses_lexical_results_when_dense_backend_unavailable(self):
+        retriever = Retriever(retrieval_mode="hybrid")
+        retriever.use_lexical_fallback = True
+        retriever.index = None
+        retriever.chunks = [
+            {"chunk_id": 0, "section": "abstract", "text": "General background text.", "metadata": {}},
+            {"chunk_id": 1, "section": "methods", "text": "This chunk mentions the dataset explicitly.", "metadata": {}},
+        ]
+
+        results = retriever.retrieve("Which dataset is mentioned?", top_k=2)
+
+        self.assertEqual(results[0]["chunk_id"], 1)
+        self.assertIn("lexical_score", results[0])
+
 
 if __name__ == "__main__":
     unittest.main()
