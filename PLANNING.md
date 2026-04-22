@@ -70,12 +70,12 @@
 - [x] Add a demo-ready paper brief export endpoint
   - [x] Sub-task 1: add a compact `/papers/{paper_id}/brief` API view for summary metadata, study signals, and ingestion context
   - [x] Sub-task 2: add a UI action to copy or download the paper brief for demos
-- [ ] Add paper deletion workflow for demo reset and artifact cleanup
+- [x] Add paper deletion workflow for demo reset and artifact cleanup
   - [x] Sub-task 1: add a registry-backed API delete route that removes persisted paper artifacts and clears cached paper state
-  - [ ] Sub-task 2: add a web UI delete action with confirmation and refresh the paper list after deletion
+  - [x] Sub-task 2: add a web UI delete action with confirmation and refresh the paper list after deletion
 
 ## Current priority order
-1. Add a web UI delete action with confirmation and paper-list refresh for the new paper deletion workflow.
+1. No remaining planned items. Next session should add a new highest-priority portfolio-hardening or demo-focused backlog item before implementation.
 
 ## Notes
 - Work on one item per session

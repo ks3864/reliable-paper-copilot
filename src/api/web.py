@@ -301,6 +301,7 @@ WEB_UI_HTML = dedent(
               <div class="actions-row">
                 <button id="copy-brief-button" class="button-secondary" type="button">Copy paper brief</button>
                 <button id="download-brief-button" class="button-secondary" type="button">Download paper brief</button>
+                <button id="delete-paper-button" class="button-secondary" type="button">Delete paper</button>
                 <span id="brief-status" class="status muted"></span>
               </div>
               <pre id="brief-preview" class="brief-preview" hidden></pre>
@@ -388,6 +389,7 @@ WEB_UI_HTML = dedent(
         const retrievalScoresEl = document.getElementById("retrieval-scores");
         const copyBriefButton = document.getElementById("copy-brief-button");
         const downloadBriefButton = document.getElementById("download-brief-button");
+        const deletePaperButton = document.getElementById("delete-paper-button");
         const briefStatus = document.getElementById("brief-status");
         const briefPreview = document.getElementById("brief-preview");
         let paperRecords = [];
@@ -639,6 +641,12 @@ WEB_UI_HTML = dedent(
           return payload;
         }
 
+        function setPaperActionState(disabled) {
+          copyBriefButton.disabled = disabled;
+          downloadBriefButton.disabled = disabled;
+          deletePaperButton.disabled = disabled;
+        }
+
         async function handleBriefAction(action) {
           const paperId = paperSelect.value;
           if (!paperId) {
@@ -646,8 +654,7 @@ WEB_UI_HTML = dedent(
             return;
           }
 
-          copyBriefButton.disabled = true;
-          downloadBriefButton.disabled = true;
+          setPaperActionState(true);
           setStatus(briefStatus, "Preparing paper brief...", "muted");
 
           try {
@@ -675,8 +682,46 @@ WEB_UI_HTML = dedent(
           } catch (error) {
             setStatus(briefStatus, error.message, "error");
           } finally {
-            copyBriefButton.disabled = false;
-            downloadBriefButton.disabled = false;
+            setPaperActionState(false);
+          }
+        }
+
+        async function handleDeletePaper() {
+          const paperId = paperSelect.value;
+          if (!paperId) {
+            setStatus(briefStatus, "Select a paper first.", "error");
+            return;
+          }
+
+          const paper = paperRecords.find((item) => item.paper_id === paperId);
+          const paperLabel = paper && (paper.title || paper.original_filename || paper.paper_id) || paperId;
+          const confirmed = window.confirm(`Delete ${paperLabel}? This removes the paper and its saved artifacts.`);
+          if (!confirmed) {
+            return;
+          }
+
+          setPaperActionState(true);
+          setStatus(briefStatus, "Deleting paper...", "muted");
+
+          try {
+            const response = await fetch(`/papers/${paperId}`, { method: "DELETE" });
+            const payload = await response.json();
+            if (!response.ok) {
+              throw new Error(payload.detail || "Failed to delete paper");
+            }
+
+            answerPanel.hidden = true;
+            sourcesEl.innerHTML = "";
+            evidenceEl.innerHTML = "";
+            retrievalScoresEl.innerHTML = "";
+            retrievalMetaEl.textContent = "";
+            await refreshPapers();
+            const deletedArtifacts = (payload.deleted_artifacts || []).length;
+            setStatus(briefStatus, `Deleted ${paperLabel}${deletedArtifacts ? ` and removed ${deletedArtifacts} artifact(s)` : ""}.`, "success");
+          } catch (error) {
+            setStatus(briefStatus, error.message, "error");
+          } finally {
+            setPaperActionState(false);
           }
         }
 
@@ -781,6 +826,10 @@ WEB_UI_HTML = dedent(
 
         downloadBriefButton.addEventListener("click", async () => {
           await handleBriefAction("download");
+        });
+
+        deletePaperButton.addEventListener("click", async () => {
+          await handleDeletePaper();
         });
 
         uploadForm.addEventListener("submit", async (event) => {
