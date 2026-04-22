@@ -49,9 +49,9 @@
   - [x] Sub-task 2: expose hybrid retrieval settings through API/eval configs and surface scores in artifacts
   - [x] Sub-task 3: upgrade lexical retrieval from token overlap to BM25 scoring for stronger hybrid fusion
   - [x] Sub-task 4: expose hybrid retrieval controls and score breakdowns in the web UI for demos/debugging
-- [ ] Add citation span highlighting and page-aware evidence formatting in API/UI responses
+- [x] Add citation span highlighting and page-aware evidence formatting in API/UI responses
   - [x] Sub-task 1: add page-aware structured evidence objects to chunk metadata, /ask responses, and the web UI evidence panel
-  - [ ] Sub-task 2: add answer-level citation span anchors/highlighting tied to evidence chunks in the UI
+  - [x] Sub-task 2: add answer-level citation span anchors/highlighting tied to evidence chunks in the UI
 - [ ] Add answerable-vs-unanswerable evaluation slice and refusal metrics
 - [ ] Add benchmark report generation (Markdown/HTML) summarizing accuracy, retrieval, latency, and cost
 - [ ] Add ingestion smoke tests and end-to-end API tests
@@ -61,14 +61,13 @@
 - [ ] Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Current priority order
-1. Add citation span highlighting and page-aware evidence formatting in API/UI responses
-2. Add answerable-vs-unanswerable evaluation slice and refusal metrics
-3. Add benchmark report generation
-4. Add ingestion smoke tests and end-to-end API tests
-5. Add Makefile / task runner
-6. Add polished demo notebook
-7. Add sample real-paper package and reproducible demo instructions
-8. Add deployment notes for local + split-host browser-assisted workflows if needed
+1. Add answerable-vs-unanswerable evaluation slice and refusal metrics
+2. Add benchmark report generation
+3. Add ingestion smoke tests and end-to-end API tests
+4. Add Makefile / task runner
+5. Add polished demo notebook
+6. Add sample real-paper package and reproducible demo instructions
+7. Add deployment notes for local + split-host browser-assisted workflows if needed
 
 ## Notes
 - Work on one item per session

@@ -10,6 +10,7 @@ import json
 import uuid
 from pathlib import Path
 import time
+import re
 
 from ..parsing import parse_pdf, save_parsed
 from ..chunking import chunk_by_sections, save_chunks
@@ -69,6 +70,16 @@ class EvidenceItem(BaseModel):
     rank: Optional[int] = None
 
 
+class AnswerCitation(BaseModel):
+    citation_id: str
+    label: str
+    chunk_id: Optional[int] = None
+    section: str
+    page_label: Optional[str] = None
+    sentence_index: int
+    sentence_text: str
+
+
 class QuestionResponse(BaseModel):
     question: str
     answer: str
@@ -77,6 +88,7 @@ class QuestionResponse(BaseModel):
     retrieval_mode: str
     retrieval_scores: List[RetrievedChunkScore]
     evidence: List[EvidenceItem]
+    answer_citations: List[AnswerCitation]
 
 
 class PaperStatus(BaseModel):
@@ -141,6 +153,41 @@ def _build_evidence_item(chunk: Dict[str, Any]) -> EvidenceItem:
         hybrid_score=chunk.get("hybrid_score"),
         rank=chunk.get("rank"),
     )
+
+
+def _split_answer_sentences(answer: str) -> List[str]:
+    cleaned_answer = (answer or "").strip()
+    if not cleaned_answer:
+        return []
+
+    collapsed = re.sub(r"\s+", " ", cleaned_answer)
+    segments = re.split(r"(?<=[.!?])\s+|\n+", collapsed)
+    return [segment.strip() for segment in segments if segment.strip()]
+
+
+def _build_answer_citations(answer: str, retrieved_chunks: List[Dict[str, Any]]) -> List[AnswerCitation]:
+    sentences = _split_answer_sentences(answer)
+    if not sentences or not retrieved_chunks:
+        return []
+
+    citations: List[AnswerCitation] = []
+    usable_chunks = retrieved_chunks[: len(sentences)]
+    for index, sentence in enumerate(sentences):
+        chunk = usable_chunks[min(index, len(usable_chunks) - 1)]
+        evidence = _build_evidence_item(chunk)
+        citations.append(
+            AnswerCitation(
+                citation_id=f"citation-{index + 1}",
+                label=f"[{index + 1}]",
+                chunk_id=evidence.chunk_id,
+                section=evidence.section,
+                page_label=evidence.page_label,
+                sentence_index=index,
+                sentence_text=sentence,
+            )
+        )
+
+    return citations
 
 
 def _get_retriever_for_request(paper: Dict[str, Any], request: QuestionRequest) -> Retriever:
@@ -344,6 +391,7 @@ async def ask_question(request: QuestionRequest):
         num_chunks_retrieved=result["num_chunks_retrieved"],
         retrieval_mode=retriever.retrieval_mode,
         evidence=[_build_evidence_item(chunk) for chunk in result.get("retrieved_chunks", [])],
+        answer_citations=_build_answer_citations(result["answer"], result.get("retrieved_chunks", [])),
         retrieval_scores=[
             RetrievedChunkScore(
                 chunk_id=chunk.get("chunk_id"),

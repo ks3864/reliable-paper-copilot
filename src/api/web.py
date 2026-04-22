@@ -96,11 +96,31 @@ WEB_UI_HTML = dedent(
           color: #047857;
         }
         .answer {
-          white-space: pre-wrap;
           background: #f9fafb;
           border-radius: 12px;
           padding: 16px;
           border: 1px solid #e5e7eb;
+          line-height: 1.7;
+        }
+        .answer-line {
+          margin-bottom: 12px;
+        }
+        .answer-line:last-child {
+          margin-bottom: 0;
+        }
+        .citation-anchor {
+          margin-left: 6px;
+          border: 0;
+          border-radius: 999px;
+          padding: 2px 8px;
+          background: #e0e7ff;
+          color: #3730a3;
+          cursor: pointer;
+          font-size: 0.8rem;
+          font-weight: 700;
+        }
+        .citation-anchor:hover {
+          background: #c7d2fe;
         }
         .control-grid {
           display: grid;
@@ -146,6 +166,13 @@ WEB_UI_HTML = dedent(
           border: 1px solid #e5e7eb;
           border-radius: 12px;
           padding: 12px;
+          scroll-margin-top: 20px;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+        }
+        .evidence-card.is-highlighted {
+          border-color: #4f46e5;
+          background: #eef2ff;
+          box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.14);
         }
         .evidence-card-header {
           display: flex;
@@ -373,6 +400,65 @@ WEB_UI_HTML = dedent(
           return Number(value).toFixed(4);
         }
 
+        function escapeHtml(value) {
+          return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#39;");
+        }
+
+        function highlightEvidenceCard(chunkId) {
+          for (const card of evidenceEl.querySelectorAll(".evidence-card")) {
+            card.classList.remove("is-highlighted");
+          }
+
+          if (chunkId === null || chunkId === undefined) {
+            return;
+          }
+
+          const card = evidenceEl.querySelector(`[data-chunk-id="${chunkId}"]`);
+          if (!card) {
+            return;
+          }
+
+          card.classList.add("is-highlighted");
+          card.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        }
+
+        function renderAnswer(payload) {
+          const answerText = payload.answer || "";
+          const citations = payload.answer_citations || [];
+
+          if (!citations.length) {
+            answerEl.textContent = answerText;
+            return;
+          }
+
+          answerEl.innerHTML = citations.map((citation) => {
+            const context = [citation.section || "unknown", citation.page_label || "page unknown"].filter(Boolean).join(" • ");
+            return `
+              <div class="answer-line">
+                <span>${escapeHtml(citation.sentence_text || "")}</span>
+                <button
+                  type="button"
+                  class="citation-anchor"
+                  data-chunk-id="${citation.chunk_id ?? ""}"
+                  title="Jump to evidence: ${escapeHtml(context)}"
+                >${escapeHtml(citation.label || "[?]")}</button>
+              </div>
+            `;
+          }).join("");
+
+          for (const button of answerEl.querySelectorAll(".citation-anchor")) {
+            button.addEventListener("click", () => {
+              const rawChunkId = button.dataset.chunkId;
+              highlightEvidenceCard(rawChunkId === "" ? null : Number(rawChunkId));
+            });
+          }
+        }
+
         function renderEvidence(payload) {
           const evidence = payload.evidence || [];
 
@@ -384,7 +470,7 @@ WEB_UI_HTML = dedent(
           evidenceEl.innerHTML = evidence.map((item) => {
             const location = item.page_label || (item.page_numbers && item.page_numbers.length ? `pages ${item.page_numbers.join(", ")}` : "page unknown");
             return `
-              <article class="evidence-card">
+              <article class="evidence-card" data-chunk-id="${item.chunk_id ?? ""}">
                 <div class="evidence-card-header">
                   <strong>${item.section || "unknown"}</strong>
                   <span class="chip">${location}</span>
@@ -588,7 +674,7 @@ WEB_UI_HTML = dedent(
               throw new Error(payload.detail || "Question failed");
             }
 
-            answerEl.textContent = payload.answer;
+            renderAnswer(payload);
             sourcesEl.innerHTML = "";
             renderEvidence(payload);
             renderRetrievalScores(payload);

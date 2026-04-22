@@ -441,6 +441,11 @@ class PaperRegistryApiTests(unittest.TestCase):
                 self.assertEqual(payload["evidence"][0]["page_numbers"], [3, 4])
                 self.assertEqual(payload["evidence"][0]["page_label"], "pp. 3-4")
                 self.assertEqual(payload["evidence"][0]["text"], "The main finding appears in the paged evidence snippet.")
+                self.assertEqual(len(payload["answer_citations"]), 1)
+                self.assertEqual(payload["answer_citations"][0]["chunk_id"], 7)
+                self.assertEqual(payload["answer_citations"][0]["section"], "results")
+                self.assertEqual(payload["answer_citations"][0]["page_label"], "pp. 3-4")
+                self.assertEqual(payload["answer_citations"][0]["label"], "[1]")
 
     def test_ask_supports_hybrid_retrieval_request_settings(self):
         class StubGenerator:
