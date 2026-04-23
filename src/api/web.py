@@ -280,6 +280,16 @@ WEB_UI_HTML = dedent(
           font-size: 0.9rem;
           color: #6b7280;
         }
+        .history-item-actions {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        .mini-button {
+          padding: 6px 10px;
+          font-size: 0.85rem;
+        }
         .chips {
           display: flex;
           flex-wrap: wrap;
@@ -701,6 +711,7 @@ WEB_UI_HTML = dedent(
               : item.has_good_match ? "good match" : "fallback or weak match";
             const promptTokens = item.token_usage && item.token_usage.total_tokens ? `${item.token_usage.total_tokens} tokens` : "token usage unavailable";
             const retrievalConfig = formatActivityRetrievalConfig(item);
+            const escapedQuestion = escapeHtml(item.question || "");
             const answerPreview = item.answer_preview ? `<p style="margin: 6px 0 0;"><strong>Answer:</strong> ${escapeHtml(item.answer_preview)}</p>` : "";
             const evidenceCues = item.evidence_labels && item.evidence_labels.length
               ? `<p class="muted" style="margin: 6px 0 0;">Evidence cues: ${escapeHtml(item.evidence_labels.join(", "))}</p>`
@@ -708,8 +719,22 @@ WEB_UI_HTML = dedent(
             const retrievalConfigLine = retrievalConfig
               ? `<p class="muted" style="margin: 6px 0 0;">Retrieval: ${escapeHtml(retrievalConfig)}</p>`
               : "";
-            return `<li><strong>${escapeHtml(item.question || "Unknown question")}</strong><br /><span class="muted">${escapeHtml(formatTimestamp(item.timestamp || "Unknown time"))} • ${Number(item.latency_ms || 0).toFixed(2)} ms • ${item.num_chunks_retrieved || 0} chunk(s) • ${escapeHtml(status)} • ${escapeHtml(promptTokens)}</span>${retrievalConfigLine}${answerPreview}${evidenceCues}</li>`;
+            const actionButton = item.question
+              ? `<div class="history-item-actions"><button type="button" class="button-secondary mini-button reuse-question-button" data-question="${escapedQuestion}">Reuse question</button></div>`
+              : "";
+            return `<li><strong>${escapeHtml(item.question || "Unknown question")}</strong><br /><span class="muted">${escapeHtml(formatTimestamp(item.timestamp || "Unknown time"))} • ${Number(item.latency_ms || 0).toFixed(2)} ms • ${item.num_chunks_retrieved || 0} chunk(s) • ${escapeHtml(status)} • ${escapeHtml(promptTokens)}</span>${retrievalConfigLine}${answerPreview}${evidenceCues}${actionButton}</li>`;
           }).join("")}</ul>`;
+        }
+
+        function reuseRecentQuestion(question) {
+          if (!question) {
+            setStatus(askStatus, "No saved question was available to reuse.", "error");
+            return;
+          }
+
+          questionInput.value = question;
+          questionInput.focus();
+          setStatus(askStatus, "Loaded a recent question into the ask box.", "success");
         }
 
         function formatTimestamp(value) {
@@ -1193,6 +1218,14 @@ WEB_UI_HTML = dedent(
 
         paperSelect.addEventListener("change", async (event) => {
           await updatePaperDetails(event.target.value);
+        });
+
+        paperActivity.addEventListener("click", (event) => {
+          const button = event.target.closest(".reuse-question-button");
+          if (!button) {
+            return;
+          }
+          reuseRecentQuestion(button.dataset.question || "");
         });
 
         copyBriefButton.addEventListener("click", async () => {

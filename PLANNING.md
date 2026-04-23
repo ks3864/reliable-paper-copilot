@@ -106,6 +106,9 @@
   - [x] Sub-task 1: include answerable vs unanswerable slice tables plus refusal confusion counts in generated benchmark Markdown/HTML reports
   - [x] Sub-task 2: document how to read the new benchmark report slices in the README demo/eval workflow
 
+## Phase 11 — Demo Follow-up Flow
+- [x] Add recent question reuse actions in the web UI for faster live follow-up demos
+
 ## Current priority order
 1. No new priority selected yet.
 
