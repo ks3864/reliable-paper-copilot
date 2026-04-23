@@ -426,13 +426,31 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
 
     if not events:
         lines.extend([
+            "## Activity summary",
+            "",
+            "No recent question activity was recorded for this paper.",
+            "",
             "## Activity",
             "",
             "No recent question activity was recorded for this paper.",
         ])
         return "\n".join(lines)
 
-    lines.extend(["## Activity", ""])
+    activity_summary = _summarize_activity_events(events)
+    lines.extend(
+        [
+            "## Activity summary",
+            "",
+            f"- Questions included: {activity_summary['question_count']}",
+            f"- Average latency: {activity_summary['average_latency_ms']:.2f} ms",
+            f"- Good-match rate: {activity_summary['good_match_rate_label']}",
+            f"- Retrieval modes: {activity_summary['retrieval_modes_label']}",
+            f"- Total tokens: {activity_summary['total_tokens']}",
+            "",
+            "## Activity",
+            "",
+        ]
+    )
     for index, event in enumerate(events, start=1):
         token_usage = event.get("token_usage") or {}
         lines.extend(
@@ -453,6 +471,54 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
         )
 
     return "\n".join(lines)
+
+
+def _summarize_activity_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not events:
+        return {
+            "question_count": 0,
+            "average_latency_ms": 0.0,
+            "good_match_count": 0,
+            "good_match_rate": None,
+            "good_match_rate_label": "No match data",
+            "retrieval_modes": {},
+            "retrieval_modes_label": "None recorded",
+            "total_tokens": 0,
+        }
+
+    question_count = len(events)
+    average_latency_ms = sum(float(event.get("latency_ms", 0.0)) for event in events) / question_count
+    total_tokens = sum(int((event.get("token_usage") or {}).get("total_tokens", 0)) for event in events)
+
+    match_values = [event.get("has_good_match") for event in events if event.get("has_good_match") is not None]
+    if match_values:
+        good_match_count = sum(1 for value in match_values if value)
+        good_match_rate = good_match_count / len(match_values)
+        good_match_rate_label = f"{good_match_count}/{len(match_values)} ({good_match_rate * 100:.0f}%)"
+    else:
+        good_match_count = 0
+        good_match_rate = None
+        good_match_rate_label = "No match data"
+
+    retrieval_modes: Dict[str, int] = {}
+    for event in events:
+        mode = event.get("retrieval_mode") or "dense"
+        retrieval_modes[mode] = retrieval_modes.get(mode, 0) + 1
+
+    retrieval_modes_label = ", ".join(
+        f"{mode} ({count})" for mode, count in sorted(retrieval_modes.items())
+    ) or "None recorded"
+
+    return {
+        "question_count": question_count,
+        "average_latency_ms": average_latency_ms,
+        "good_match_count": good_match_count,
+        "good_match_rate": good_match_rate,
+        "good_match_rate_label": good_match_rate_label,
+        "retrieval_modes": retrieval_modes,
+        "retrieval_modes_label": retrieval_modes_label,
+        "total_tokens": total_tokens,
+    }
 
 
 

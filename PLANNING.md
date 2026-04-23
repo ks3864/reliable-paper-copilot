@@ -109,8 +109,15 @@
 ## Phase 11 — Demo Follow-up Flow
 - [x] Add recent question reuse actions in the web UI for faster live follow-up demos
 
+## Phase 12 — Activity Recap Polish
+- [ ] Add richer aggregate recap summaries for recent paper activity
+  - [x] Sub-task 1: add recent activity summary metrics to transcript exports and the web UI activity panel
+  - [ ] Sub-task 2: expose a structured activity summary object from the recent activity API for scripted consumers
+
 ## Current priority order
-1. No new priority selected yet.
+1. Add richer aggregate recap summaries for recent paper activity.
+   - [x] Sub-task 1: add recent activity summary metrics to transcript exports and the web UI activity panel
+   - [ ] Sub-task 2: expose a structured activity summary object from the recent activity API for scripted consumers
 
 ## Notes
 - Work on one item per session

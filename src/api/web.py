@@ -700,6 +700,60 @@ WEB_UI_HTML = dedent(
           return parts.join(" • ");
         }
 
+        function summarizeActivityItems(items) {
+          if (!items || !items.length) {
+            return {
+              questionCount: 0,
+              averageLatencyMs: 0,
+              totalTokens: 0,
+              retrievalModesLabel: "None recorded",
+              goodMatchRateLabel: "No match data",
+            };
+          }
+
+          const totalLatencyMs = items.reduce((sum, item) => sum + Number(item.latency_ms || 0), 0);
+          const totalTokens = items.reduce((sum, item) => sum + Number(item.token_usage && item.token_usage.total_tokens || 0), 0);
+          const modeCounts = items.reduce((counts, item) => {
+            const mode = item.retrieval_mode || "dense";
+            counts[mode] = (counts[mode] || 0) + 1;
+            return counts;
+          }, {});
+          const retrievalModesLabel = Object.entries(modeCounts)
+            .sort((left, right) => left[0].localeCompare(right[0]))
+            .map(([mode, count]) => `${mode} (${count})`)
+            .join(", ") || "None recorded";
+          const matchValues = items
+            .map((item) => item.has_good_match)
+            .filter((value) => value !== null && value !== undefined);
+          const goodMatchCount = matchValues.filter(Boolean).length;
+          const goodMatchRateLabel = matchValues.length
+            ? `${goodMatchCount}/${matchValues.length} (${Math.round((goodMatchCount / matchValues.length) * 100)}%)`
+            : "No match data";
+
+          return {
+            questionCount: items.length,
+            averageLatencyMs: totalLatencyMs / items.length,
+            totalTokens,
+            retrievalModesLabel,
+            goodMatchRateLabel,
+          };
+        }
+
+        function renderActivitySummary(items) {
+          if (!items || !items.length) {
+            return '<p class="muted">No recent question activity was recorded for this paper.</p>';
+          }
+
+          const summary = summarizeActivityItems(items);
+          return `
+            <p><strong>Questions included:</strong> ${summary.questionCount}</p>
+            <p><strong>Average latency:</strong> ${summary.averageLatencyMs.toFixed(2)} ms</p>
+            <p><strong>Good-match rate:</strong> ${escapeHtml(summary.goodMatchRateLabel)}</p>
+            <p><strong>Retrieval modes:</strong> ${escapeHtml(summary.retrievalModesLabel)}</p>
+            <p><strong>Total tokens:</strong> ${summary.totalTokens}</p>
+          `;
+        }
+
         function renderActivityItems(items) {
           if (!items || !items.length) {
             return '<p class="muted">No question history yet.</p>';
@@ -1146,16 +1200,25 @@ WEB_UI_HTML = dedent(
           ].join("");
 
           paperHistory.innerHTML = renderDetailCard("Operator metadata history", renderMetadataHistory(paper.operator_metadata_history, provenance));
-          paperActivity.innerHTML = renderDetailCard("Recent question history", '<p class="muted">Loading recent activity...</p>');
+          paperActivity.innerHTML = [
+            renderDetailCard("Recent activity summary", '<p class="muted">Loading recent activity...</p>'),
+            renderDetailCard("Recent question history", '<p class="muted">Loading recent activity...</p>'),
+          ].join("");
           paperDetails.hidden = false;
           resetBriefUi();
           populateMetadataEditor(paper);
 
           try {
             const activity = await fetchPaperActivity(paperId);
-            paperActivity.innerHTML = renderDetailCard("Recent question history", renderActivityItems(activity));
+            paperActivity.innerHTML = [
+              renderDetailCard("Recent activity summary", renderActivitySummary(activity)),
+              renderDetailCard("Recent question history", renderActivityItems(activity)),
+            ].join("");
           } catch (error) {
-            paperActivity.innerHTML = renderDetailCard("Recent question history", `<p class="muted">${escapeHtml(error.message)}</p>`);
+            paperActivity.innerHTML = [
+              renderDetailCard("Recent activity summary", `<p class="muted">${escapeHtml(error.message)}</p>`),
+              renderDetailCard("Recent question history", `<p class="muted">${escapeHtml(error.message)}</p>`),
+            ].join("");
           }
         }
 
