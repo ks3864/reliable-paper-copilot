@@ -5,6 +5,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import time
 
 from src.extraction import (
     extract_dataset_names,
@@ -169,6 +170,7 @@ class PaperRegistry:
         normalized = deepcopy(paper)
         normalized.setdefault("operator_ingestion_notes", [])
         normalized.setdefault("provenance", {})
+        normalized.setdefault("operator_metadata_history", [])
         payload.setdefault("papers", {})[paper["paper_id"]] = normalized
         self._write(payload)
         return deepcopy(normalized)
@@ -194,6 +196,23 @@ class PaperRegistry:
                 if field in provenance:
                     current[field] = provenance[field]
             paper["provenance"] = current
+
+        current_provenance = paper.get("provenance", {})
+        history = list(paper.get("operator_metadata_history") or [])
+        update_timestamp = current_provenance.get("last_operator_update_at") or time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        update_source = current_provenance.get("last_operator_update_source") or "unknown"
+
+        history_entry = {
+            "timestamp": update_timestamp,
+            "source": update_source,
+            "operator_update_count": int(current_provenance.get("operator_update_count") or len(history) + 1),
+            "operator_ingestion_notes": list(paper.get("operator_ingestion_notes") or []),
+            "source_label": current_provenance.get("source_label"),
+            "source_url": current_provenance.get("source_url"),
+            "citation_hint": current_provenance.get("citation_hint"),
+        }
+        history.append(history_entry)
+        paper["operator_metadata_history"] = history[-10:]
 
         self._write(payload)
         return self._with_artifact_validation(paper)

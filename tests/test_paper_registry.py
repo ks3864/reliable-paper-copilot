@@ -176,6 +176,9 @@ class PaperRegistryTests(unittest.TestCase):
             self.assertEqual(updated["provenance"]["last_operator_update_source"], "web-ui")
             self.assertEqual(updated["provenance"]["operator_update_count"], 1)
             self.assertEqual(updated["provenance"]["uploaded_via"], "api_upload")
+            self.assertEqual(len(updated["operator_metadata_history"]), 1)
+            self.assertEqual(updated["operator_metadata_history"][0]["source"], "web-ui")
+            self.assertEqual(updated["operator_metadata_history"][0]["source_label"], "Nature PDF export")
 
     def test_paper_registry_reports_artifact_validation(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -454,7 +457,10 @@ class PaperRegistryApiTests(unittest.TestCase):
                 self.assertEqual(payload["provenance"]["source_label"], "Curated arXiv export")
                 self.assertEqual(payload["provenance"]["source_url"], "https://arxiv.org/abs/1234.5678")
                 self.assertEqual(payload["provenance"]["last_operator_update_source"], "api-test")
+                self.assertEqual(len(payload["operator_metadata_history"]), 1)
+                self.assertEqual(payload["operator_metadata_history"][0]["source"], "api-test")
                 self.assertEqual(api_main.PAPERS["paper-edit"]["operator_ingestion_notes"], ["Needs provenance confirmation"])
+                self.assertEqual(len(api_main.PAPERS["paper-edit"]["operator_metadata_history"]), 1)
 
     def test_ask_route_can_rebuild_retriever_from_registry_metadata(self):
         class StubGenerator:

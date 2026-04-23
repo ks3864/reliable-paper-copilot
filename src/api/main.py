@@ -99,6 +99,7 @@ class PaperStatus(BaseModel):
     artifact_validation: Optional[Dict[str, Any]] = None
     ingestion_notes: List[str] = []
     operator_ingestion_notes: List[str] = []
+    operator_metadata_history: List[Dict[str, Any]] = []
     provenance: Optional[Dict[str, Any]] = None
     summary_metadata: Optional[Dict[str, Any]] = None
 
@@ -189,6 +190,7 @@ def _build_paper_brief(paper: Dict[str, Any]) -> PaperBrief:
             "artifact_validation": artifact_validation,
             "ingestion_notes": paper.get("ingestion_notes") or [],
             "operator_ingestion_notes": paper.get("operator_ingestion_notes") or [],
+            "operator_metadata_history": paper.get("operator_metadata_history") or [],
             "provenance": provenance,
         },
     )
@@ -397,6 +399,7 @@ async def upload_paper(file: UploadFile = File(...)):
             artifact_validation=persisted_record.get("artifact_validation"),
             ingestion_notes=persisted_record.get("ingestion_notes", []),
             operator_ingestion_notes=persisted_record.get("operator_ingestion_notes", []),
+            operator_metadata_history=persisted_record.get("operator_metadata_history", []),
             provenance=persisted_record.get("provenance"),
             summary_metadata=persisted_record.get("summary_metadata"),
         )
@@ -495,6 +498,7 @@ async def get_paper_status(paper_id: str):
         artifact_validation=paper.get("artifact_validation"),
         ingestion_notes=paper.get("ingestion_notes", []),
         operator_ingestion_notes=paper.get("operator_ingestion_notes", []),
+        operator_metadata_history=paper.get("operator_metadata_history", []),
         provenance=paper.get("provenance"),
         summary_metadata=paper.get("summary_metadata"),
     )
@@ -555,6 +559,7 @@ async def update_paper_metadata(paper_id: str, request: PaperMetadataUpdateReque
     if cached is not None:
         cached.update(
             operator_ingestion_notes=updated.get("operator_ingestion_notes", []),
+            operator_metadata_history=updated.get("operator_metadata_history", []),
             provenance=updated.get("provenance"),
             artifact_validation=updated.get("artifact_validation"),
         )
@@ -567,6 +572,7 @@ async def update_paper_metadata(paper_id: str, request: PaperMetadataUpdateReque
         artifact_validation=updated.get("artifact_validation"),
         ingestion_notes=updated.get("ingestion_notes", []),
         operator_ingestion_notes=updated.get("operator_ingestion_notes", []),
+        operator_metadata_history=updated.get("operator_metadata_history", []),
         provenance=updated.get("provenance"),
         summary_metadata=updated.get("summary_metadata"),
     )
@@ -617,6 +623,7 @@ async def list_papers():
                 "artifact_validation": paper.get("artifact_validation"),
                 "ingestion_notes": paper.get("ingestion_notes", []),
                 "operator_ingestion_notes": paper.get("operator_ingestion_notes", []),
+                "operator_metadata_history": paper.get("operator_metadata_history", []),
                 "provenance": paper.get("provenance"),
                 "summary_metadata": paper.get("summary_metadata"),
             }

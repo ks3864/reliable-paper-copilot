@@ -84,6 +84,9 @@
    - [x] Sub-task 1: add a paper details editor in the web UI with save flow for operator notes plus provenance fields via the existing metadata API
    - [x] Sub-task 2: surface saved operator metadata update history more clearly in the web UI, including last update source/time
 
+## Phase 7 — Demo Credibility Follow-ups
+- [x] Persist operator metadata edit history and show real saved edits in the web UI
+
 ## Notes
 - Work on one item per session
 - Commit after each item with a descriptive message

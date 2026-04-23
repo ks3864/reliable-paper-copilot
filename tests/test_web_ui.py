@@ -51,6 +51,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("function renderActivityItems", response.text)
         self.assertIn("function formatTimestamp", response.text)
         self.assertIn("function renderMetadataHistory", response.text)
+        self.assertIn("Update ${Number(item.operator_update_count || 0) || \"?\"}", response.text)
+        self.assertIn("Source URL saved", response.text)
         self.assertIn("history-item", response.text)
         self.assertIn("function handleBriefAction", response.text)
         self.assertIn("function handleDeletePaper", response.text)
