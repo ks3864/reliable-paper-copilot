@@ -82,7 +82,7 @@
 ## Current priority order
 1. Add operator-editable paper metadata fields in the web UI so provenance and manual notes can be updated without API calls.
    - [x] Sub-task 1: add a paper details editor in the web UI with save flow for operator notes plus provenance fields via the existing metadata API
-   - [ ] Sub-task 2: surface saved operator metadata update history more clearly in the web UI, including last update source/time
+   - [x] Sub-task 2: surface saved operator metadata update history more clearly in the web UI, including last update source/time
 
 ## Notes
 - Work on one item per session

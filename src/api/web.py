@@ -253,6 +253,25 @@ WEB_UI_HTML = dedent(
           margin: 8px 0 0 0;
           padding-left: 18px;
         }
+        .history-list {
+          display: grid;
+          gap: 10px;
+          margin-top: 8px;
+        }
+        .history-item {
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          padding: 10px;
+          background: #f9fafb;
+        }
+        .history-item p {
+          margin: 0;
+        }
+        .history-item-meta {
+          margin-top: 6px;
+          font-size: 0.9rem;
+          color: #6b7280;
+        }
         .chips {
           display: flex;
           flex-wrap: wrap;
@@ -308,6 +327,7 @@ WEB_UI_HTML = dedent(
               <div id="paper-summary" class="detail-grid"></div>
               <div id="paper-signals" class="detail-grid"></div>
               <div id="paper-notes" class="detail-grid"></div>
+              <div id="paper-history" class="detail-grid"></div>
               <div id="paper-activity" class="detail-grid"></div>
               <div class="actions-row">
                 <button id="copy-brief-button" class="button-secondary" type="button">Copy paper brief</button>
@@ -417,6 +437,7 @@ WEB_UI_HTML = dedent(
         const paperSummary = document.getElementById("paper-summary");
         const paperSignals = document.getElementById("paper-signals");
         const paperNotes = document.getElementById("paper-notes");
+        const paperHistory = document.getElementById("paper-history");
         const paperActivity = document.getElementById("paper-activity");
         const answerPanel = document.getElementById("answer-panel");
         const answerEl = document.getElementById("answer");
@@ -629,6 +650,55 @@ WEB_UI_HTML = dedent(
           }).join("")}</ul>`;
         }
 
+        function formatTimestamp(value) {
+          if (!value) {
+            return "Not yet recorded";
+          }
+
+          const parsed = new Date(value);
+          if (Number.isNaN(parsed.getTime())) {
+            return value;
+          }
+
+          return parsed.toLocaleString(undefined, {
+            dateStyle: "medium",
+            timeStyle: "short",
+          });
+        }
+
+        function renderMetadataHistory(provenance) {
+          const updateCount = Number(provenance && provenance.operator_update_count || 0);
+          const lastUpdatedAt = provenance && provenance.last_operator_update_at;
+          const lastUpdatedSource = provenance && provenance.last_operator_update_source;
+          const sourceLabel = provenance && provenance.source_label;
+          const citationHint = provenance && provenance.citation_hint;
+          const sourceUrl = provenance && provenance.source_url;
+
+          const items = [
+            {
+              title: updateCount ? `Saved ${updateCount} operator update${updateCount === 1 ? "" : "s"}` : "No saved operator edits yet",
+              meta: updateCount
+                ? `${formatTimestamp(lastUpdatedAt)} • ${lastUpdatedSource || "source unknown"}`
+                : "Save notes or provenance fields to start the history.",
+            },
+            {
+              title: `Current source label: ${sourceLabel || "Not set"}`,
+              meta: `Citation hint: ${citationHint || "Not set"}`,
+            },
+            {
+              title: `Current source URL: ${sourceUrl || "Not set"}`,
+              meta: lastUpdatedAt ? `Last confirmed ${formatTimestamp(lastUpdatedAt)}` : "No operator confirmation recorded yet.",
+            },
+          ];
+
+          return `<div class="history-list">${items.map((item) => `
+            <article class="history-item">
+              <p><strong>${escapeHtml(item.title)}</strong></p>
+              <p class="history-item-meta">${escapeHtml(item.meta)}</p>
+            </article>
+          `).join("")}</div>`;
+        }
+
         function buildBriefMarkdown(brief) {
           const overview = brief.overview || {};
           const studySignals = brief.study_signals || {};
@@ -828,6 +898,7 @@ WEB_UI_HTML = dedent(
             paperSummary.innerHTML = "";
             paperSignals.innerHTML = "";
             paperNotes.innerHTML = "";
+            paperHistory.innerHTML = "";
             paperActivity.innerHTML = "";
             resetBriefUi();
             return;
@@ -879,6 +950,7 @@ WEB_UI_HTML = dedent(
             renderDetailCard("Operator notes", renderList(paper.operator_ingestion_notes, "No operator notes added yet")),
           ].join("");
 
+          paperHistory.innerHTML = renderDetailCard("Operator metadata history", renderMetadataHistory(provenance));
           paperActivity.innerHTML = renderDetailCard("Recent question history", '<p class="muted">Loading recent activity...</p>');
           paperDetails.hidden = false;
           resetBriefUi();
