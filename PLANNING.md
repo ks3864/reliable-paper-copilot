@@ -87,6 +87,14 @@
 ## Phase 7 — Demo Credibility Follow-ups
 - [x] Persist operator metadata edit history and show real saved edits in the web UI
 
+## Phase 8 — Multi-Paper Demo Usability
+- [x] Add client-side paper search and newest-first sorting in the web UI paper picker
+
+## Current priority order
+1. Add a shareable question-and-answer transcript export for recent paper activity.
+   - [ ] Sub-task 1: add an API endpoint that formats recent per-paper activity as Markdown for download or copy flows.
+   - [ ] Sub-task 2: add a web UI action to copy or download the recent activity transcript.
+
 ## Notes
 - Work on one item per session
 - Commit after each item with a descriptive message

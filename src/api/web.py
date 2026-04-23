@@ -220,6 +220,14 @@ WEB_UI_HTML = dedent(
           gap: 10px;
           margin: 16px 0 0;
         }
+        .paper-picker {
+          display: grid;
+          gap: 10px;
+        }
+        .paper-picker-meta {
+          font-size: 0.9rem;
+          color: #6b7280;
+        }
         .metadata-editor {
           margin-top: 16px;
           padding: 16px;
@@ -362,11 +370,13 @@ WEB_UI_HTML = dedent(
                 </div>
               </section>
             </div>
-            <div>
+            <div class="paper-picker">
               <label for="paper-id">Paper</label>
+              <input id="paper-search" type="text" placeholder="Filter papers by title, file name, or id" autocomplete="off" />
               <select id="paper-id" required>
                 <option value="">Select an uploaded paper</option>
               </select>
+              <div id="paper-picker-meta" class="paper-picker-meta">No papers loaded yet.</div>
             </div>
             <div>
               <label for="question">Question</label>
@@ -433,6 +443,8 @@ WEB_UI_HTML = dedent(
         const askButton = document.getElementById("ask-button");
         const askStatus = document.getElementById("ask-status");
         const paperSelect = document.getElementById("paper-id");
+        const paperSearchInput = document.getElementById("paper-search");
+        const paperPickerMeta = document.getElementById("paper-picker-meta");
         const paperDetails = document.getElementById("paper-details");
         const paperSummary = document.getElementById("paper-summary");
         const paperSignals = document.getElementById("paper-signals");
@@ -695,6 +707,60 @@ WEB_UI_HTML = dedent(
             </article>
           `;
           }).join("")}</div>`;
+        }
+
+        function buildPaperSearchText(paper) {
+          return [paper.title, paper.original_filename, paper.paper_id]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+        }
+
+        function sortPapersByRecency(papers) {
+          return [...papers].sort((left, right) => {
+            const leftCreated = Date.parse(left.created_at || "") || 0;
+            const rightCreated = Date.parse(right.created_at || "") || 0;
+            if (leftCreated !== rightCreated) {
+              return rightCreated - leftCreated;
+            }
+            return (left.title || left.paper_id || "").localeCompare(right.title || right.paper_id || "");
+          });
+        }
+
+        function getVisiblePapers(query) {
+          const normalizedQuery = (query || "").trim().toLowerCase();
+          const sortedPapers = sortPapersByRecency(paperRecords);
+          if (!normalizedQuery) {
+            return sortedPapers;
+          }
+          return sortedPapers.filter((paper) => buildPaperSearchText(paper).includes(normalizedQuery));
+        }
+
+        function renderPaperOptions(selectedPaperId = "") {
+          const visiblePapers = getVisiblePapers(paperSearchInput.value);
+          paperSelect.innerHTML = '<option value="">Select an uploaded paper</option>';
+          for (const paper of visiblePapers) {
+            const option = document.createElement("option");
+            option.value = paper.paper_id;
+            option.textContent = paper.title ? `${paper.title} (${paper.paper_id.slice(0, 8)})` : paper.paper_id;
+            if (paper.paper_id === selectedPaperId) {
+              option.selected = true;
+            }
+            paperSelect.appendChild(option);
+          }
+
+          const totalCount = paperRecords.length;
+          const visibleCount = visiblePapers.length;
+          const suffix = totalCount === 1 ? "paper" : "papers";
+          if (!totalCount) {
+            paperPickerMeta.textContent = "No papers uploaded yet.";
+          } else if ((paperSearchInput.value || "").trim()) {
+            paperPickerMeta.textContent = `Showing ${visibleCount} of ${totalCount} ${suffix}, newest first.`;
+          } else {
+            paperPickerMeta.textContent = `${totalCount} ${suffix} available, newest first.`;
+          }
+
+          return visiblePapers;
         }
 
         function buildBriefMarkdown(brief) {
@@ -968,18 +1034,19 @@ WEB_UI_HTML = dedent(
           const papers = payload.papers || [];
           paperRecords = papers;
 
-          paperSelect.innerHTML = '<option value="">Select an uploaded paper</option>';
-          for (const paper of papers) {
-            const option = document.createElement("option");
-            option.value = paper.paper_id;
-            option.textContent = paper.title ? `${paper.title} (${paper.paper_id.slice(0, 8)})` : paper.paper_id;
-            if (paper.paper_id === selectedPaperId) {
-              option.selected = true;
-            }
-            paperSelect.appendChild(option);
+          const visiblePapers = renderPaperOptions(selectedPaperId);
+          const fallbackPaperId = visiblePapers[0] && visiblePapers[0].paper_id;
+          const nextPaperId = selectedPaperId || paperSelect.value || fallbackPaperId || "";
+          if (nextPaperId && !visiblePapers.some((paper) => paper.paper_id === nextPaperId)) {
+            paperSelect.value = "";
+            await updatePaperDetails("");
+            return;
           }
 
-          await updatePaperDetails(selectedPaperId || paperSelect.value);
+          if (nextPaperId) {
+            paperSelect.value = nextPaperId;
+          }
+          await updatePaperDetails(nextPaperId || "");
         }
 
         async function checkHealth() {
@@ -991,6 +1058,16 @@ WEB_UI_HTML = dedent(
             healthStatus.textContent = "unreachable";
           }
         }
+
+        paperSearchInput.addEventListener("input", async () => {
+          const previouslySelectedPaperId = paperSelect.value;
+          const visiblePapers = renderPaperOptions(previouslySelectedPaperId);
+          const nextPaperId = visiblePapers.some((paper) => paper.paper_id === previouslySelectedPaperId)
+            ? previouslySelectedPaperId
+            : "";
+          paperSelect.value = nextPaperId;
+          await updatePaperDetails(nextPaperId);
+        });
 
         paperSelect.addEventListener("change", async (event) => {
           await updatePaperDetails(event.target.value);
