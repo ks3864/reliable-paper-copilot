@@ -65,17 +65,22 @@ def test_benchmark_summary_and_renderers_include_quality_latency_and_cost(tmp_pa
     assert summary["latency"]["avg_ms"] >= 0.0
     assert summary["cost"]["total_tokens"] == len(result["results"]) * 18
     assert summary["cost"]["total_cost"] > 0.0
+    assert "answerable" in summary["slices"]
+    assert summary["retrieval"]["refusal_true_negatives"] >= 0
 
     markdown = render_benchmark_report_markdown(summary)
     assert "# Benchmark Report: baseline-eval" in markdown
     assert "## Accuracy" in markdown
     assert "## Retrieval" in markdown
+    assert "## Answerability slices" in markdown
+    assert "## Refusal confusion summary" in markdown
     assert "## Latency" in markdown
     assert "## Cost" in markdown
 
     html = render_benchmark_report_html(summary)
     assert "<!DOCTYPE html>" in html
     assert "Benchmark Report: baseline-eval" in html
+    assert "Answerability slices" in html
 
     output_dir = Path(result["output_dir"])
     assert (output_dir / "benchmark_report.md").exists()

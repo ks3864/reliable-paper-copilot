@@ -62,6 +62,7 @@ def summarize_benchmark_run(
             "answerable": int(aggregate.get("answerable_count", 0)),
             "unanswerable": int(aggregate.get("unanswerable_count", 0)),
         },
+        "slices": experiment_run.get("metrics", {}).get("slices", {}),
         "accuracy": {
             "exact_match": float(aggregate.get("exact_match", 0.0)),
             "f1": float(aggregate.get("f1", 0.0)),
@@ -76,6 +77,10 @@ def summarize_benchmark_run(
             "mrr": float(aggregate.get("retrieval_mrr", 0.0)),
             "false_refusal_rate": float(aggregate.get("false_refusal_rate", 0.0)),
             "missed_refusal_rate": float(aggregate.get("missed_refusal_rate", 0.0)),
+            "refusal_true_positives": int(aggregate.get("refusal_true_positives", 0)),
+            "refusal_false_positives": int(aggregate.get("refusal_false_positives", 0)),
+            "refusal_false_negatives": int(aggregate.get("refusal_false_negatives", 0)),
+            "refusal_true_negatives": int(aggregate.get("refusal_true_negatives", 0)),
         },
         "latency": {
             "avg_ms": mean(latencies) if latencies else 0.0,
@@ -104,6 +109,7 @@ def render_benchmark_report_markdown(summary: Dict[str, Any]) -> str:
     latency = summary["latency"]
     cost = summary["cost"]
     counts = summary["counts"]
+    slices = summary.get("slices", {})
 
     lines = [
         f"# Benchmark Report: {experiment.get('name', 'unknown')}",
@@ -134,7 +140,50 @@ def render_benchmark_report_markdown(summary: Dict[str, Any]) -> str:
         f"| False refusal rate | {retrieval['false_refusal_rate']:.2%} |",
         f"| Missed refusal rate | {retrieval['missed_refusal_rate']:.2%} |",
         "",
-        "## Latency",
+    ]
+
+    if slices:
+        lines.extend(
+            [
+                "## Answerability slices",
+                "",
+                "| Slice | Count | Share | Exact Match | F1 | Retrieval Hit | Retrieval MRR | Refusal Rate | Refusal Accuracy |",
+                "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+            ]
+        )
+        for slice_name in ("answerable", "unanswerable"):
+            slice_metrics = slices.get(slice_name)
+            if not slice_metrics:
+                continue
+            lines.append(
+                "| {name} | {count} | {share:.2%} | {em:.2%} | {f1:.2%} | {hit:.2%} | {mrr:.2%} | {refusal_rate:.2%} | {refusal_accuracy:.2%} |".format(
+                    name=slice_name.title(),
+                    count=int(slice_metrics.get("count", 0)),
+                    share=float(slice_metrics.get("share", 0.0)),
+                    em=float(slice_metrics.get("exact_match", 0.0)),
+                    f1=float(slice_metrics.get("f1", 0.0)),
+                    hit=float(slice_metrics.get("retrieval_hit", 0.0)),
+                    mrr=float(slice_metrics.get("retrieval_mrr", 0.0)),
+                    refusal_rate=float(slice_metrics.get("refusal_rate", 0.0)),
+                    refusal_accuracy=float(slice_metrics.get("refusal_accuracy", 0.0)),
+                )
+            )
+        lines.extend(
+            [
+                "",
+                "## Refusal confusion summary",
+                "",
+                f"- True refusals on unanswerable questions: {retrieval['refusal_true_positives']}",
+                f"- False refusals on answerable questions: {retrieval['refusal_false_positives']}",
+                f"- Missed refusals on unanswerable questions: {retrieval['refusal_false_negatives']}",
+                f"- Correct non-refusals on answerable questions: {retrieval['refusal_true_negatives']}",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## Latency",
         "",
         "| Metric | Value (ms) |",
         "| --- | ---: |",
@@ -156,7 +205,8 @@ def render_benchmark_report_markdown(summary: Dict[str, Any]) -> str:
         f"| Completion cost | {cost['currency']} {cost['completion_cost']:.4f} |",
         f"| Total cost | {cost['currency']} {cost['total_cost']:.4f} |",
         "",
-    ]
+        ]
+    )
     return "\n".join(lines)
 
 
