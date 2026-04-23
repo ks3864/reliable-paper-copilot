@@ -93,7 +93,7 @@
 ## Current priority order
 1. Add a shareable question-and-answer transcript export for recent paper activity.
    - [x] Sub-task 1: add an API endpoint that formats recent per-paper activity as Markdown for download or copy flows.
-   - [ ] Sub-task 2: add a web UI action to copy or download the recent activity transcript.
+   - [x] Sub-task 2: add a web UI action to copy or download the recent activity transcript.
 
 ## Notes
 - Work on one item per session

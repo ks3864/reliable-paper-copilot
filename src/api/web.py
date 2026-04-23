@@ -337,6 +337,14 @@ WEB_UI_HTML = dedent(
               <div id="paper-notes" class="detail-grid"></div>
               <div id="paper-history" class="detail-grid"></div>
               <div id="paper-activity" class="detail-grid"></div>
+              <section class="metadata-editor">
+                <h3>Export activity transcript</h3>
+                <p class="muted">Copy or download the five most recent paper questions as a shareable Markdown transcript.</p>
+                <div class="actions-row">
+                  <button id="copy-activity-button" class="button-secondary" type="button">Copy activity transcript</button>
+                  <button id="download-activity-button" class="button-secondary" type="button">Download activity transcript</button>
+                </div>
+              </section>
               <div class="actions-row">
                 <button id="copy-brief-button" class="button-secondary" type="button">Copy paper brief</button>
                 <button id="download-brief-button" class="button-secondary" type="button">Download paper brief</button>
@@ -459,6 +467,8 @@ WEB_UI_HTML = dedent(
         const retrievalScoresEl = document.getElementById("retrieval-scores");
         const copyBriefButton = document.getElementById("copy-brief-button");
         const downloadBriefButton = document.getElementById("download-brief-button");
+        const copyActivityButton = document.getElementById("copy-activity-button");
+        const downloadActivityButton = document.getElementById("download-activity-button");
         const deletePaperButton = document.getElementById("delete-paper-button");
         const briefStatus = document.getElementById("brief-status");
         const briefPreview = document.getElementById("brief-preview");
@@ -852,6 +862,8 @@ WEB_UI_HTML = dedent(
         function setPaperActionState(disabled) {
           copyBriefButton.disabled = disabled;
           downloadBriefButton.disabled = disabled;
+          copyActivityButton.disabled = disabled;
+          downloadActivityButton.disabled = disabled;
           deletePaperButton.disabled = disabled;
         }
 
@@ -882,6 +894,47 @@ WEB_UI_HTML = dedent(
             const anchor = document.createElement("a");
             anchor.href = url;
             anchor.download = `${brief.paper_id}-paper-brief.md`;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+          } catch (error) {
+            setStatus(briefStatus, error.message, "error");
+          } finally {
+            setPaperActionState(false);
+          }
+        }
+
+        async function handleActivityTranscriptAction(action) {
+          const paperId = paperSelect.value;
+          if (!paperId) {
+            setStatus(briefStatus, "Select a paper first.", "error");
+            return;
+          }
+
+          setPaperActionState(true);
+          setStatus(briefStatus, "Preparing activity transcript...", "muted");
+
+          try {
+            const transcriptMarkdown = await fetchPaperActivityTranscript(paperId);
+            briefPreview.textContent = transcriptMarkdown;
+            briefPreview.hidden = false;
+
+            const paper = paperRecords.find((item) => item.paper_id === paperId) || {};
+            const downloadName = `${paper.paper_id || paperId}-activity-transcript.md`;
+
+            if (action === "copy") {
+              await navigator.clipboard.writeText(transcriptMarkdown);
+              setStatus(briefStatus, "Activity transcript copied to clipboard.", "success");
+              return;
+            }
+
+            const blob = new Blob([transcriptMarkdown], { type: "text/markdown;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = downloadName;
             document.body.appendChild(anchor);
             anchor.click();
             anchor.remove();
@@ -938,6 +991,23 @@ WEB_UI_HTML = dedent(
           const payload = await response.json();
           if (!response.ok) {
             throw new Error(payload.detail || "Failed to load paper activity");
+          }
+          return payload;
+        }
+
+        async function fetchPaperActivityTranscript(paperId) {
+          const response = await fetch(`/papers/${paperId}/activity/export?limit=5`);
+          const payload = await response.text();
+          if (!response.ok) {
+            try {
+              const parsed = JSON.parse(payload);
+              throw new Error(parsed.detail || "Failed to export paper activity transcript");
+            } catch (error) {
+              if (error instanceof SyntaxError) {
+                throw new Error(payload || "Failed to export paper activity transcript");
+              }
+              throw error;
+            }
           }
           return payload;
         }
@@ -1079,6 +1149,14 @@ WEB_UI_HTML = dedent(
 
         downloadBriefButton.addEventListener("click", async () => {
           await handleBriefAction("download");
+        });
+
+        copyActivityButton.addEventListener("click", async () => {
+          await handleActivityTranscriptAction("copy");
+        });
+
+        downloadActivityButton.addEventListener("click", async () => {
+          await handleActivityTranscriptAction("download");
         });
 
         deletePaperButton.addEventListener("click", async () => {
