@@ -60,9 +60,11 @@ class WebUITests(unittest.TestCase):
         self.assertIn("function savePaperMetadata", response.text)
         self.assertIn("function parseOperatorNotes", response.text)
         self.assertIn("function populateMetadataEditor", response.text)
+        self.assertIn("function formatActivityRetrievalConfig", response.text)
         self.assertIn("function renderActivityItems", response.text)
         self.assertIn("Answer:</strong>", response.text)
         self.assertIn("Evidence cues:", response.text)
+        self.assertIn("Retrieval:", response.text)
         self.assertIn("function formatTimestamp", response.text)
         self.assertIn("function renderMetadataHistory", response.text)
         self.assertIn("Update ${Number(item.operator_update_count || 0) || \"?\"}", response.text)
@@ -104,6 +106,9 @@ class WebUITests(unittest.TestCase):
         self.assertIn('await refreshPapers();', response.text)
         self.assertIn('retrieval_mode: retrievalMode', response.text)
         self.assertIn('renderRetrievalScores(payload)', response.text)
+        self.assertIn('mode=${item.retrieval_mode || "dense"}', response.text)
+        self.assertIn('dense=${Number(item.dense_weight).toFixed(1)}', response.text)
+        self.assertIn('lexical=${Number(item.lexical_weight).toFixed(1)}', response.text)
         self.assertIn('id="retrieval-scores-table"', response.text)
 
 

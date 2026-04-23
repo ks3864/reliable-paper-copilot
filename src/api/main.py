@@ -137,6 +137,11 @@ class PaperActivityItem(BaseModel):
     model_version: str
     token_usage: Dict[str, int] = {}
     sources: List[str] = []
+    retrieval_mode: Optional[str] = None
+    top_k: Optional[int] = None
+    dense_weight: Optional[float] = None
+    lexical_weight: Optional[float] = None
+    rrf_k: Optional[int] = None
 
 
 def _get_paper_or_404(paper_id: str) -> Dict[str, Any]:
@@ -297,6 +302,26 @@ def _build_activity_evidence_labels(chunks: List[Dict[str, Any]], limit: int = 3
 
 
 
+def _format_activity_retrieval_config(event: Dict[str, Any]) -> str:
+    retrieval_mode = event.get("retrieval_mode") or "dense"
+    top_k = int(event.get("top_k", 0) or 0)
+    dense_weight = event.get("dense_weight")
+    lexical_weight = event.get("lexical_weight")
+    rrf_k = event.get("rrf_k")
+
+    parts = [f"mode={retrieval_mode}"]
+    if top_k:
+        parts.append(f"top_k={top_k}")
+    if dense_weight is not None:
+        parts.append(f"dense_weight={float(dense_weight):.2f}")
+    if lexical_weight is not None:
+        parts.append(f"lexical_weight={float(lexical_weight):.2f}")
+    if rrf_k is not None:
+        parts.append(f"rrf_k={int(rrf_k)}")
+    return ", ".join(parts)
+
+
+
 def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]) -> str:
     title = paper.get("title") or paper.get("paper_id") or "Unknown paper"
     provenance = paper.get("provenance") or {}
@@ -331,6 +356,7 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
                 f"- Retrieved chunks: {int(event.get('num_chunks_retrieved', 0))}",
                 f"- Match status: {_format_activity_match_label(event.get('has_good_match'))}",
                 f"- Model version: {event.get('model_version') or 'unknown'}",
+                f"- Retrieval config: {_format_activity_retrieval_config(event)}",
                 f"- Token usage: prompt={int(token_usage.get('prompt_tokens', 0))}, completion={int(token_usage.get('completion_tokens', 0))}, total={int(token_usage.get('total_tokens', 0))}",
                 f"- Sources: {', '.join(event.get('sources') or []) or 'None'}",
                 f"- Answer preview: {event.get('answer_preview') or 'Not captured'}",
@@ -512,14 +538,19 @@ async def ask_question(request: QuestionRequest):
         raise HTTPException(status_code=500, detail="Paper artifacts are missing on disk.")
 
     retriever = _get_retriever_for_request(paper, request)
-    
+    retrieval_mode = request.retrieval_mode or "dense"
+    lexical_weight = float(request.lexical_weight if request.lexical_weight is not None else 1.0)
+    dense_weight = float(request.dense_weight if request.dense_weight is not None else 1.0)
+    rrf_k = int(request.rrf_k if request.rrf_k is not None else 60)
+    top_k = int(request.top_k if request.top_k is not None else 5)
+
     # Create answer generator (using mock for now - replace with real LLM)
     generator = SimpleAnswerGenerator(retriever)
     
     started_at = time.perf_counter()
 
     # Generate answer
-    result = generator.answer(request.question, top_k=request.top_k)
+    result = generator.answer(request.question, top_k=top_k)
     latency_ms = (time.perf_counter() - started_at) * 1000
     answer_preview = _build_activity_answer_preview(result.get("answer"))
     evidence_labels = _build_activity_evidence_labels(result.get("retrieved_chunks", []))
@@ -538,6 +569,11 @@ async def ask_question(request: QuestionRequest):
                 "has_good_match": result.get("confidence", {}).get("has_good_match"),
                 "answer_preview": answer_preview,
                 "evidence_labels": evidence_labels,
+                "retrieval_mode": retrieval_mode,
+                "top_k": top_k,
+                "dense_weight": dense_weight,
+                "lexical_weight": lexical_weight,
+                "rrf_k": rrf_k,
             },
         )
     )
@@ -613,6 +649,11 @@ async def get_paper_activity(paper_id: str, limit: int = 10):
             model_version=event.get("model_version", "unknown"),
             token_usage=event.get("token_usage") or {},
             sources=event.get("sources") or [],
+            retrieval_mode=event.get("retrieval_mode"),
+            top_k=event.get("top_k"),
+            dense_weight=event.get("dense_weight"),
+            lexical_weight=event.get("lexical_weight"),
+            rrf_k=event.get("rrf_k"),
         )
         for event in events
     ]

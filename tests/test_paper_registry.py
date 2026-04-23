@@ -908,6 +908,11 @@ class PaperRegistryApiTests(unittest.TestCase):
                         "sources": ["methods"],
                         "answer_preview": "The paper uses the MIMIC-III cohort for experiments.",
                         "evidence_labels": ["methods (p. 4)", "appendix (p. 12)"],
+                        "retrieval_mode": "hybrid",
+                        "top_k": 5,
+                        "dense_weight": 1.2,
+                        "lexical_weight": 0.8,
+                        "rrf_k": 50,
                     },
                 )
             )
@@ -927,6 +932,11 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertEqual(payload[0]["num_chunks_retrieved"], 3)
             self.assertTrue(payload[0]["has_good_match"])
             self.assertEqual(payload[0]["sources"], ["methods"])
+            self.assertEqual(payload[0]["retrieval_mode"], "hybrid")
+            self.assertEqual(payload[0]["top_k"], 5)
+            self.assertEqual(payload[0]["dense_weight"], 1.2)
+            self.assertEqual(payload[0]["lexical_weight"], 0.8)
+            self.assertEqual(payload[0]["rrf_k"], 50)
 
     def test_activity_export_route_returns_markdown_transcript(self):
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -959,6 +969,11 @@ class PaperRegistryApiTests(unittest.TestCase):
                         "sources": ["discussion", "limitations"],
                         "answer_preview": "The authors note that the cohort is small and from a single site.",
                         "evidence_labels": ["discussion (p. 8)", "limitations (p. 9)"],
+                        "retrieval_mode": "hybrid",
+                        "top_k": 4,
+                        "dense_weight": 1.0,
+                        "lexical_weight": 1.3,
+                        "rrf_k": 60,
                     },
                 )
             )
@@ -975,6 +990,7 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertIn("- Paper ID: paper-activity-export", response.text)
             self.assertIn("### 1. What limitation did the authors mention?", response.text)
             self.assertIn("- Match status: Fallback or weak retrieval match", response.text)
+            self.assertIn("- Retrieval config: mode=hybrid, top_k=4, dense_weight=1.00, lexical_weight=1.30, rrf_k=60", response.text)
             self.assertIn("- Token usage: prompt=12, completion=5, total=17", response.text)
             self.assertIn("- Sources: discussion, limitations", response.text)
             self.assertIn("- Answer preview: The authors note that the cohort is small and from a single site.", response.text)

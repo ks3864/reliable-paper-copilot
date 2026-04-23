@@ -658,6 +658,17 @@ WEB_UI_HTML = dedent(
           setStatus(metadataStatus, "", "muted");
         }
 
+        function formatActivityRetrievalConfig(item) {
+          const parts = [
+            `mode=${item.retrieval_mode || "dense"}`,
+            item.top_k ? `top_k=${item.top_k}` : null,
+            item.dense_weight !== null && item.dense_weight !== undefined ? `dense=${Number(item.dense_weight).toFixed(1)}` : null,
+            item.lexical_weight !== null && item.lexical_weight !== undefined ? `lexical=${Number(item.lexical_weight).toFixed(1)}` : null,
+            item.rrf_k !== null && item.rrf_k !== undefined ? `rrf_k=${item.rrf_k}` : null,
+          ].filter(Boolean);
+          return parts.join(" • ");
+        }
+
         function renderActivityItems(items) {
           if (!items || !items.length) {
             return '<p class="muted">No question history yet.</p>';
@@ -668,11 +679,15 @@ WEB_UI_HTML = dedent(
               ? "match unknown"
               : item.has_good_match ? "good match" : "fallback or weak match";
             const promptTokens = item.token_usage && item.token_usage.total_tokens ? `${item.token_usage.total_tokens} tokens` : "token usage unavailable";
+            const retrievalConfig = formatActivityRetrievalConfig(item);
             const answerPreview = item.answer_preview ? `<p style="margin: 6px 0 0;"><strong>Answer:</strong> ${escapeHtml(item.answer_preview)}</p>` : "";
             const evidenceCues = item.evidence_labels && item.evidence_labels.length
               ? `<p class="muted" style="margin: 6px 0 0;">Evidence cues: ${escapeHtml(item.evidence_labels.join(", "))}</p>`
               : "";
-            return `<li><strong>${escapeHtml(item.question || "Unknown question")}</strong><br /><span class="muted">${escapeHtml(formatTimestamp(item.timestamp || "Unknown time"))} • ${Number(item.latency_ms || 0).toFixed(2)} ms • ${item.num_chunks_retrieved || 0} chunk(s) • ${escapeHtml(status)} • ${escapeHtml(promptTokens)}</span>${answerPreview}${evidenceCues}</li>`;
+            const retrievalConfigLine = retrievalConfig
+              ? `<p class="muted" style="margin: 6px 0 0;">Retrieval: ${escapeHtml(retrievalConfig)}</p>`
+              : "";
+            return `<li><strong>${escapeHtml(item.question || "Unknown question")}</strong><br /><span class="muted">${escapeHtml(formatTimestamp(item.timestamp || "Unknown time"))} • ${Number(item.latency_ms || 0).toFixed(2)} ms • ${item.num_chunks_retrieved || 0} chunk(s) • ${escapeHtml(status)} • ${escapeHtml(promptTokens)}</span>${retrievalConfigLine}${answerPreview}${evidenceCues}</li>`;
           }).join("")}</ul>`;
         }
 

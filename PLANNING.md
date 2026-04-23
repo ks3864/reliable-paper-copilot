@@ -93,6 +93,7 @@
 ## Current priority order
 1. Add richer recent-activity recap details for demo follow-up.
    - [x] Sub-task 1: include answer previews and evidence cues in recent paper activity API responses, transcript exports, and the web UI history panel.
+   - [x] Sub-task 2: include retrieval configuration recaps in recent paper activity API responses, transcript exports, and the web UI history panel.
 
 ## Notes
 - Work on one item per session
