@@ -79,7 +79,7 @@
 - [x] Add a demo script or Make target that runs the sample-package ingest and asks a canned demo question end-to-end
 
 ## Current priority order
-1. Persist sample demo output to an artifacts/demo directory so the canned workflow leaves behind a reusable demo transcript.
+1. No open items currently listed. Add the next portfolio-hardening or demo-ergonomics task here.
 
 ## Notes
 - Work on one item per session

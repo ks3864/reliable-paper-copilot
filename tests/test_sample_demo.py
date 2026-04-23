@@ -1,9 +1,10 @@
+import json
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.run_sample_demo import run_sample_demo, select_question
+from scripts.run_sample_demo import persist_demo_artifact, run_sample_demo, select_question
 
 
 class SampleDemoTests(unittest.TestCase):
@@ -26,11 +27,27 @@ class SampleDemoTests(unittest.TestCase):
         self.assertIn("Unknown question id: missing", str(context.exception))
         self.assertIn("first", str(context.exception))
 
-    def test_run_sample_demo_fetches_uploads_and_queries_sample_package(self):
+    def test_persist_demo_artifact_writes_timestamped_and_latest_files(self):
+        payload = {"package_id": "demo-package", "question_id": "motivation", "answer": {"answer": "test"}}
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            artifacts_dir = Path(tmpdir) / "artifacts" / "demo"
+            artifact_path = persist_demo_artifact(payload, artifacts_dir)
+
+            self.assertTrue(artifact_path.exists())
+            self.assertEqual(json.loads(artifact_path.read_text(encoding="utf-8")), payload)
+
+            latest_path = artifacts_dir / "latest.json"
+            self.assertTrue(latest_path.exists())
+            self.assertEqual(json.loads(latest_path.read_text(encoding="utf-8")), payload)
+            self.assertIn("demo-package-motivation", artifact_path.name)
+
+    def test_run_sample_demo_fetches_uploads_queries_and_persists_artifact(self):
         package_dir = Path("sample_packages/attention-is-all-you-need")
 
         with tempfile.TemporaryDirectory() as tmpdir:
             output_dir = Path(tmpdir) / "downloads"
+            artifacts_dir = Path(tmpdir) / "artifacts" / "demo"
 
             def fake_fetch_sample_package(_package_dir, requested_output_dir):
                 requested_output_dir.mkdir(parents=True, exist_ok=True)
@@ -87,6 +104,7 @@ class SampleDemoTests(unittest.TestCase):
                 payload = run_sample_demo(
                     package_dir=package_dir,
                     output_dir=output_dir,
+                    artifacts_dir=artifacts_dir,
                     question_id="architecture",
                     retrieval_mode="hybrid",
                 )
@@ -96,6 +114,12 @@ class SampleDemoTests(unittest.TestCase):
             self.assertIn("Transformer encoder and decoder", payload["question"])
             self.assertEqual(payload["upload"]["paper_id"], "paper-123")
             self.assertEqual(payload["answer"]["retrieval_mode"], "hybrid")
+            self.assertIn("artifact_path", payload)
+
+            artifact_path = Path(payload["artifact_path"])
+            self.assertTrue(artifact_path.exists())
+            self.assertEqual(json.loads(artifact_path.read_text(encoding="utf-8"))["question_id"], "architecture")
+            self.assertTrue((artifacts_dir / "latest.json").exists())
 
             calls = FakeTestClient.last_instance.calls
             self.assertEqual([call["path"] for call in calls], ["/upload", "/ask"])

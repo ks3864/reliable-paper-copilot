@@ -158,7 +158,8 @@ If you just want one reproducible command that downloads the packaged PDF, inges
 make demo-sample-package
 ```
 
-That uses the packaged `motivation` question by default and prints a JSON payload containing the upload metadata plus the answer response.
+That uses the packaged `motivation` question by default, prints a JSON payload containing the upload metadata plus the answer response, and also persists a reusable transcript under `artifacts/demo/`.
+Each run writes a timestamped `artifacts/demo/<timestamp>-<package>-<question>.json` file and refreshes `artifacts/demo/latest.json` for quick reuse in demos or screenshots.
 You can swap in a different canned prompt, for example:
 
 ```bash

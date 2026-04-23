@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 from contextlib import contextmanager
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Iterator
 
@@ -42,12 +43,27 @@ def select_question(questions: list[dict], question_id: str | None) -> dict:
     raise ValueError(f"Unknown question id: {question_id}. Available ids: {available}")
 
 
+def persist_demo_artifact(payload: dict, artifacts_dir: Path) -> Path:
+    timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    package_id = payload["package_id"]
+    question_id = payload.get("question_id") or "question"
+
+    artifacts_dir.mkdir(parents=True, exist_ok=True)
+    artifact_path = artifacts_dir / f"{timestamp}-{package_id}-{question_id}.json"
+    latest_path = artifacts_dir / "latest.json"
+
+    artifact_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    latest_path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+    return artifact_path
+
+
 def run_sample_demo(
     package_dir: Path,
     output_dir: Path,
     question_id: str | None = None,
     top_k: int = 5,
     retrieval_mode: str = "hybrid",
+    artifacts_dir: Path | None = None,
 ) -> dict:
     manifest = load_manifest(package_dir)
     questions = load_demo_questions(package_dir)
@@ -76,7 +92,7 @@ def run_sample_demo(
         ask_response.raise_for_status()
         answer_payload = ask_response.json()
 
-    return {
+    payload = {
         "package_id": manifest["package_id"],
         "title": manifest.get("title"),
         "paper_path": str(pdf_path),
@@ -86,6 +102,12 @@ def run_sample_demo(
         "upload": upload_payload,
         "answer": answer_payload,
     }
+
+    if artifacts_dir is not None:
+        artifact_path = persist_demo_artifact(payload, artifacts_dir)
+        payload["artifact_path"] = str(artifact_path)
+
+    return payload
 
 
 def main() -> None:
@@ -99,6 +121,11 @@ def main() -> None:
         "--output-dir",
         default="data/raw",
         help="Directory where the sample PDF should be downloaded",
+    )
+    parser.add_argument(
+        "--artifacts-dir",
+        default="artifacts/demo",
+        help="Directory where the demo transcript JSON should be persisted",
     )
     parser.add_argument(
         "--question-id",
@@ -120,6 +147,7 @@ def main() -> None:
         question_id=args.question_id,
         top_k=args.top_k,
         retrieval_mode=args.retrieval_mode,
+        artifacts_dir=Path(args.artifacts_dir),
     )
     print(json.dumps(payload, indent=2))
 
