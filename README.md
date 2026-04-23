@@ -246,6 +246,20 @@ Then turn the latest `results.json` into a shareable summary:
 make benchmark-report REPORT_RESULTS=artifacts/experiments/hybrid-retrieval/results.json
 ```
 
+The generated `benchmark_report.md` and `benchmark_report.html` now include answerability slices plus a refusal confusion summary. A quick way to read them:
+
+- `Answerable` slice: focus on exact match, F1, and retrieval hit or MRR. If this slice drops while the unanswerable slice stays strong, the system is likely over-refusing or missing relevant evidence on real questions.
+- `Unanswerable` slice: focus on refusal rate and refusal accuracy. This slice should usually show a high refusal rate, because the correct behavior is to abstain when the paper does not support an answer.
+- `False refusal rate`: the share of answerable questions where the system refused anyway. High values mean the copilot is being too conservative.
+- `Missed refusal rate`: the share of unanswerable questions where the system answered instead of abstaining. High values mean the copilot is bluffing instead of declining.
+- `Refusal confusion summary`: read this like a binary classification confusion table for abstention behavior.
+  - `True refusals`: good abstentions on unanswerable questions.
+  - `False refusals`: bad abstentions on answerable questions.
+  - `Missed refusals`: bad answered attempts on unanswerable questions.
+  - `Correct non-refusals`: good answered attempts on answerable questions.
+
+For quick comparisons between runs, start with this rule of thumb: prefer higher answerable-slice quality, higher unanswerable-slice refusal accuracy, lower false-refusal rate, and lower missed-refusal rate, even when overall exact match looks similar.
+
 ### 7. Optional: demo the notebook walkthrough
 
 For a shorter scripted walkthrough, open:
@@ -273,6 +287,8 @@ The evaluation runner now reports both classic QA metrics and an answer-quality 
 - overall answer quality
 
 Persisted experiment summaries now include an answerability slice table plus a refusal confusion summary, which makes it easier to spot whether the system is over-refusing answerable questions or failing to abstain on unanswerable ones.
+
+When reading those reports, treat the answerable slice as the main quality signal for normal QA behavior, and treat the unanswerable slice plus refusal confusion counts as the safety signal for abstention behavior. A strong run should improve answerable quality without buying that gain by increasing missed refusals.
 
 The current implementation uses a pluggable judge interface, with a deterministic mock judge for local testing.
 

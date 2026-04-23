@@ -104,10 +104,10 @@
 ## Phase 10 — Evaluation Report Polish
 - [x] Add answerability slice and refusal confusion breakdowns to benchmark report artifacts
   - [x] Sub-task 1: include answerable vs unanswerable slice tables plus refusal confusion counts in generated benchmark Markdown/HTML reports
-  - [ ] Sub-task 2: document how to read the new benchmark report slices in the README demo/eval workflow
+  - [x] Sub-task 2: document how to read the new benchmark report slices in the README demo/eval workflow
 
 ## Current priority order
-1. Add README guidance for interpreting benchmark report slices and refusal confusion metrics.
+1. No new priority selected yet.
 
 ## Notes
 - Work on one item per session
