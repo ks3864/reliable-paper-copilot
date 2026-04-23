@@ -81,6 +81,7 @@ For deployment guidance, including when to keep the app fully local versus when 
 - `POST /ask` - Ask a question about a processed paper
 - `GET /papers/{paper_id}/brief` - Fetch a compact demo-ready paper brief with overview, study signals, and ingestion context
 - `GET /papers/{paper_id}/activity` - Fetch recent ask history for a paper, including latency and retrieval telemetry
+- `GET /papers/{paper_id}/activity/export` - Export recent per-paper ask history as a shareable Markdown transcript
 - `GET /health` - Health check
 
 `POST /ask` also accepts optional retrieval controls for experiments and debugging:

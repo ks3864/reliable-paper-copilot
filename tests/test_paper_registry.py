@@ -920,6 +920,54 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertTrue(payload[0]["has_good_match"])
             self.assertEqual(payload[0]["sources"], ["methods"])
 
+    def test_activity_export_route_returns_markdown_transcript(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            request_logger = api_main.RequestLogger(log_dir=tmp_path / "logs")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-activity-export",
+                    "title": "Exportable Activity Paper",
+                    "original_filename": "exportable.pdf",
+                    "status": "ready",
+                    "num_chunks": 2,
+                    "created_at": "2026-04-22T20:16:00Z",
+                    "provenance": {"source_label": "Demo upload"},
+                }
+            )
+
+            request_logger.log(
+                request_logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-activity-export",
+                    question="What limitation did the authors mention?",
+                    latency_ms=18.25,
+                    token_usage={"prompt_tokens": 12, "completion_tokens": 5, "total_tokens": 17},
+                    model_version="demo-model-v2",
+                    extra={
+                        "num_chunks_retrieved": 4,
+                        "has_good_match": False,
+                        "sources": ["discussion", "limitations"],
+                    },
+                )
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
+                api_main, "PAPERS", {}
+            ), patch.object(api_main, "REQUEST_LOGGER", request_logger):
+                client = TestClient(api_main.app)
+                response = client.get("/papers/paper-activity-export/activity/export?limit=5")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("text/markdown", response.headers["content-type"])
+            self.assertIn("# Recent activity transcript for Exportable Activity Paper", response.text)
+            self.assertIn("- Paper ID: paper-activity-export", response.text)
+            self.assertIn("### 1. What limitation did the authors mention?", response.text)
+            self.assertIn("- Match status: Fallback or weak retrieval match", response.text)
+            self.assertIn("- Token usage: prompt=12, completion=5, total=17", response.text)
+            self.assertIn("- Sources: discussion, limitations", response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

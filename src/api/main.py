@@ -1,7 +1,7 @@
 """FastAPI Application for Reliable Scientific Paper Copilot."""
 
 from fastapi import FastAPI, UploadFile, File, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
 import tempfile
@@ -137,6 +137,16 @@ class PaperActivityItem(BaseModel):
     sources: List[str] = []
 
 
+def _get_paper_or_404(paper_id: str) -> Dict[str, Any]:
+    paper = PAPERS.get(paper_id)
+    if paper is None:
+        registry_record = PAPER_REGISTRY.get_paper(paper_id)
+        if registry_record is None:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        paper = _hydrate_paper_cache(registry_record)
+    return paper
+
+
 @app.get("/", response_class=HTMLResponse)
 async def web_ui():
     """Serve a lightweight browser UI for uploading papers and asking questions."""
@@ -258,6 +268,57 @@ def _build_answer_citations(answer: str, retrieved_chunks: List[Dict[str, Any]])
         )
 
     return citations
+
+
+def _format_activity_match_label(has_good_match: Optional[bool]) -> str:
+    if has_good_match is None:
+        return "Match quality unknown"
+    return "Good retrieval match" if has_good_match else "Fallback or weak retrieval match"
+
+
+
+def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]) -> str:
+    title = paper.get("title") or paper.get("paper_id") or "Unknown paper"
+    provenance = paper.get("provenance") or {}
+    lines = [
+        f"# Recent activity transcript for {title}",
+        "",
+        f"- Paper ID: {paper.get('paper_id', 'unknown')}",
+        f"- Status: {paper.get('status', 'unknown')}",
+        f"- Original filename: {paper.get('original_filename') or 'Unknown'}",
+        f"- Source label: {provenance.get('source_label') or 'Unknown'}",
+        f"- Generated at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+        f"- Included activity items: {len(events)}",
+        "",
+    ]
+
+    if not events:
+        lines.extend([
+            "## Activity",
+            "",
+            "No recent question activity was recorded for this paper.",
+        ])
+        return "\n".join(lines)
+
+    lines.extend(["## Activity", ""])
+    for index, event in enumerate(events, start=1):
+        token_usage = event.get("token_usage") or {}
+        lines.extend(
+            [
+                f"### {index}. {event.get('question') or 'Unknown question'}",
+                f"- Timestamp: {event.get('timestamp') or 'Unknown'}",
+                f"- Latency: {float(event.get('latency_ms', 0.0)):.2f} ms",
+                f"- Retrieved chunks: {int(event.get('num_chunks_retrieved', 0))}",
+                f"- Match status: {_format_activity_match_label(event.get('has_good_match'))}",
+                f"- Model version: {event.get('model_version') or 'unknown'}",
+                f"- Token usage: prompt={int(token_usage.get('prompt_tokens', 0))}, completion={int(token_usage.get('completion_tokens', 0))}, total={int(token_usage.get('total_tokens', 0))}",
+                f"- Sources: {', '.join(event.get('sources') or []) or 'None'}",
+                "",
+            ]
+        )
+
+    return "\n".join(lines)
+
 
 
 def _get_retriever_for_request(paper: Dict[str, Any], request: QuestionRequest) -> Retriever:
@@ -483,13 +544,8 @@ async def ask_question(request: QuestionRequest):
 @app.get("/papers/{paper_id}/status", response_model=PaperStatus)
 async def get_paper_status(paper_id: str):
     """Get status of an uploaded paper."""
-    paper = PAPERS.get(paper_id)
-    if paper is None:
-        registry_record = PAPER_REGISTRY.get_paper(paper_id)
-        if registry_record is None:
-            raise HTTPException(status_code=404, detail="Paper not found")
-        paper = _hydrate_paper_cache(registry_record)
-    
+    paper = _get_paper_or_404(paper_id)
+
     return PaperStatus(
         paper_id=paper_id,
         title=paper.get("title"),
@@ -507,12 +563,7 @@ async def get_paper_status(paper_id: str):
 @app.get("/papers/{paper_id}/brief", response_model=PaperBrief)
 async def get_paper_brief(paper_id: str):
     """Return a compact, demo-friendly summary of a paper and its ingestion metadata."""
-    paper = PAPERS.get(paper_id)
-    if paper is None:
-        registry_record = PAPER_REGISTRY.get_paper(paper_id)
-        if registry_record is None:
-            raise HTTPException(status_code=404, detail="Paper not found")
-        paper = _hydrate_paper_cache(registry_record)
+    paper = _get_paper_or_404(paper_id)
 
     return _build_paper_brief(paper)
 
@@ -520,12 +571,7 @@ async def get_paper_brief(paper_id: str):
 @app.get("/papers/{paper_id}/activity", response_model=List[PaperActivityItem])
 async def get_paper_activity(paper_id: str, limit: int = 10):
     """Return recent ask activity for a paper to support demo review and debugging."""
-    paper = PAPERS.get(paper_id)
-    if paper is None:
-        registry_record = PAPER_REGISTRY.get_paper(paper_id)
-        if registry_record is None:
-            raise HTTPException(status_code=404, detail="Paper not found")
-        _hydrate_paper_cache(registry_record)
+    _get_paper_or_404(paper_id)
 
     safe_limit = max(1, min(limit, 50))
     events = REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=safe_limit)
@@ -542,6 +588,18 @@ async def get_paper_activity(paper_id: str, limit: int = 10):
         )
         for event in events
     ]
+
+
+@app.get("/papers/{paper_id}/activity/export", response_class=PlainTextResponse)
+async def export_paper_activity_markdown(paper_id: str, limit: int = 10):
+    """Return recent ask activity for a paper as a shareable Markdown transcript."""
+    paper = _get_paper_or_404(paper_id)
+    safe_limit = max(1, min(limit, 50))
+    events = REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=safe_limit)
+    return PlainTextResponse(
+        _build_activity_markdown(paper, events),
+        media_type="text/markdown; charset=utf-8",
+    )
 
 
 @app.patch("/papers/{paper_id}/metadata", response_model=PaperStatus)
