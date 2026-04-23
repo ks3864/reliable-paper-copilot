@@ -739,18 +739,25 @@ WEB_UI_HTML = dedent(
           };
         }
 
-        function renderActivitySummary(items) {
-          if (!items || !items.length) {
+        function renderActivitySummary(activity) {
+          const summary = activity && activity.summary;
+          const items = activity && activity.items || [];
+          if (!summary && !items.length) {
             return '<p class="muted">No recent question activity was recorded for this paper.</p>';
           }
 
-          const summary = summarizeActivityItems(items);
+          const normalizedSummary = summary || summarizeActivityItems(items);
+          const questionCount = Number(normalizedSummary.question_count ?? normalizedSummary.questionCount ?? 0);
+          const averageLatencyMs = Number(normalizedSummary.average_latency_ms ?? normalizedSummary.averageLatencyMs ?? 0);
+          const goodMatchRateLabel = normalizedSummary.good_match_rate_label || normalizedSummary.goodMatchRateLabel || "No match data";
+          const retrievalModesLabel = normalizedSummary.retrieval_modes_label || normalizedSummary.retrievalModesLabel || "None recorded";
+          const totalTokens = Number(normalizedSummary.total_tokens ?? normalizedSummary.totalTokens ?? 0);
           return `
-            <p><strong>Questions included:</strong> ${summary.questionCount}</p>
-            <p><strong>Average latency:</strong> ${summary.averageLatencyMs.toFixed(2)} ms</p>
-            <p><strong>Good-match rate:</strong> ${escapeHtml(summary.goodMatchRateLabel)}</p>
-            <p><strong>Retrieval modes:</strong> ${escapeHtml(summary.retrievalModesLabel)}</p>
-            <p><strong>Total tokens:</strong> ${summary.totalTokens}</p>
+            <p><strong>Questions included:</strong> ${questionCount}</p>
+            <p><strong>Average latency:</strong> ${averageLatencyMs.toFixed(2)} ms</p>
+            <p><strong>Good-match rate:</strong> ${escapeHtml(goodMatchRateLabel)}</p>
+            <p><strong>Retrieval modes:</strong> ${escapeHtml(retrievalModesLabel)}</p>
+            <p><strong>Total tokens:</strong> ${totalTokens}</p>
           `;
         }
 
@@ -1107,7 +1114,10 @@ WEB_UI_HTML = dedent(
           if (!response.ok) {
             throw new Error(payload.detail || "Failed to load paper activity");
           }
-          return payload;
+          return {
+            summary: payload.summary || summarizeActivityItems(payload.items || []),
+            items: payload.items || [],
+          };
         }
 
         async function fetchPaperActivityTranscript(paperId) {
@@ -1212,7 +1222,7 @@ WEB_UI_HTML = dedent(
             const activity = await fetchPaperActivity(paperId);
             paperActivity.innerHTML = [
               renderDetailCard("Recent activity summary", renderActivitySummary(activity)),
-              renderDetailCard("Recent question history", renderActivityItems(activity)),
+              renderDetailCard("Recent question history", renderActivityItems(activity.items)),
             ].join("");
           } catch (error) {
             paperActivity.innerHTML = [

@@ -144,6 +144,22 @@ class PaperActivityItem(BaseModel):
     rrf_k: Optional[int] = None
 
 
+class PaperActivitySummary(BaseModel):
+    question_count: int
+    average_latency_ms: float
+    good_match_count: int
+    good_match_rate: Optional[float] = None
+    good_match_rate_label: str
+    retrieval_modes: Dict[str, int] = {}
+    retrieval_modes_label: str
+    total_tokens: int
+
+
+class PaperActivityResponse(BaseModel):
+    summary: PaperActivitySummary
+    items: List[PaperActivityItem]
+
+
 class DemoQuestionPreset(BaseModel):
     id: str
     question: str
@@ -828,14 +844,14 @@ async def export_paper_brief_markdown(paper_id: str):
     )
 
 
-@app.get("/papers/{paper_id}/activity", response_model=List[PaperActivityItem])
+@app.get("/papers/{paper_id}/activity", response_model=PaperActivityResponse)
 async def get_paper_activity(paper_id: str, limit: int = 10):
     """Return recent ask activity for a paper to support demo review and debugging."""
     _get_paper_or_404(paper_id)
 
     safe_limit = max(1, min(limit, 50))
     events = REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=safe_limit)
-    return [
+    items = [
         PaperActivityItem(
             timestamp=event.get("timestamp", ""),
             question=event.get("question"),
@@ -855,6 +871,10 @@ async def get_paper_activity(paper_id: str, limit: int = 10):
         )
         for event in events
     ]
+    return PaperActivityResponse(
+        summary=PaperActivitySummary(**_summarize_activity_events(events)),
+        items=items,
+    )
 
 
 @app.get("/papers/{paper_id}/activity/export", response_class=PlainTextResponse)
