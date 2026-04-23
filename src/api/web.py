@@ -332,6 +332,20 @@ WEB_UI_HTML = dedent(
               <label for="paper-file">Paper PDF</label>
               <input id="paper-file" name="file" type="file" accept="application/pdf" required />
             </div>
+            <div class="control-grid">
+              <div>
+                <label for="upload-source-label">Source label (optional)</label>
+                <input id="upload-source-label" name="source_label" type="text" placeholder="arXiv PDF export" />
+              </div>
+              <div>
+                <label for="upload-source-url">Source URL (optional)</label>
+                <input id="upload-source-url" name="source_url" type="text" placeholder="https://arxiv.org/abs/..." />
+              </div>
+            </div>
+            <div>
+              <label for="upload-citation-hint">Citation hint (optional)</label>
+              <input id="upload-citation-hint" name="citation_hint" type="text" placeholder="NeurIPS 2024 camera-ready PDF" />
+            </div>
             <button id="upload-button" type="submit">Upload and process</button>
             <div id="upload-status" class="status muted"></div>
           </form>
@@ -481,6 +495,9 @@ WEB_UI_HTML = dedent(
         const uploadForm = document.getElementById("upload-form");
         const uploadButton = document.getElementById("upload-button");
         const uploadStatus = document.getElementById("upload-status");
+        const uploadSourceLabelInput = document.getElementById("upload-source-label");
+        const uploadSourceUrlInput = document.getElementById("upload-source-url");
+        const uploadCitationHintInput = document.getElementById("upload-citation-hint");
         const askForm = document.getElementById("ask-form");
         const askButton = document.getElementById("ask-button");
         const askStatus = document.getElementById("ask-status");
@@ -1451,6 +1468,15 @@ WEB_UI_HTML = dedent(
           try {
             const formData = new FormData();
             formData.append("file", file);
+            if (uploadSourceLabelInput.value.trim()) {
+              formData.append("source_label", uploadSourceLabelInput.value.trim());
+            }
+            if (uploadSourceUrlInput.value.trim()) {
+              formData.append("source_url", uploadSourceUrlInput.value.trim());
+            }
+            if (uploadCitationHintInput.value.trim()) {
+              formData.append("citation_hint", uploadCitationHintInput.value.trim());
+            }
             const response = await fetch("/upload", { method: "POST", body: formData });
             const payload = await response.json();
             if (!response.ok) {
@@ -1460,6 +1486,9 @@ WEB_UI_HTML = dedent(
             await refreshPapers(payload.paper_id);
             setStatus(uploadStatus, `Ready: ${payload.title || payload.paper_id} (${payload.num_chunks} chunks)`, "success");
             fileInput.value = "";
+            uploadSourceLabelInput.value = "";
+            uploadSourceUrlInput.value = "";
+            uploadCitationHintInput.value = "";
           } catch (error) {
             setStatus(uploadStatus, error.message, "error");
           } finally {

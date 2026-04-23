@@ -110,6 +110,20 @@ class PaperRegistryTests(unittest.TestCase):
         self.assertEqual(provenance["operator_update_count"], 0)
         self.assertIsNone(provenance["last_operator_update_at"])
 
+    def test_build_provenance_metadata_accepts_upload_time_overrides(self):
+        provenance = build_provenance_metadata(
+            original_filename="paper.pdf",
+            file_hash="abc123",
+            created_at="2026-04-21T22:16:00Z",
+            source_label="Curated benchmark PDF",
+            source_url=" https://example.com/paper ",
+            citation_hint=" Camera-ready appendix ",
+        )
+
+        self.assertEqual(provenance["source_label"], "Curated benchmark PDF")
+        self.assertEqual(provenance["source_url"], "https://example.com/paper")
+        self.assertEqual(provenance["citation_hint"], "Camera-ready appendix")
+
     def test_paper_registry_persists_records(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             registry_path = Path(tmpdir) / "papers" / "registry.json"
@@ -301,6 +315,11 @@ class PaperRegistryApiTests(unittest.TestCase):
                 response = client.post(
                     "/upload",
                     files={"file": ("smoke-paper.pdf", b"%PDF-1.4\n%stub pdf bytes\n", "application/pdf")},
+                    data={
+                        "source_label": "arXiv curated upload",
+                        "source_url": "https://arxiv.org/abs/1234.5678",
+                        "citation_hint": "arXiv v3 PDF",
+                    },
                 )
 
             self.assertEqual(response.status_code, 200)
@@ -319,6 +338,10 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertEqual(stored_record["original_filename"], "smoke-paper.pdf")
             self.assertEqual(stored_record["file_size_bytes"], len(b"%PDF-1.4\n%stub pdf bytes\n"))
             self.assertEqual(stored_record["summary_metadata"]["authors"], ["Ada Lovelace"])
+            self.assertEqual(stored_record["provenance"]["source_label"], "arXiv curated upload")
+            self.assertEqual(stored_record["provenance"]["source_url"], "https://arxiv.org/abs/1234.5678")
+            self.assertEqual(stored_record["provenance"]["citation_hint"], "arXiv v3 PDF")
+            self.assertEqual(payload["provenance"]["source_label"], "arXiv curated upload")
             self.assertFalse(Path(stored_record["index_path"]).exists())
             self.assertIn(payload["paper_id"], paper_cache)
 

@@ -1,6 +1,6 @@
 """FastAPI Application for Reliable Scientific Paper Copilot."""
 
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, PlainTextResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any
@@ -642,7 +642,12 @@ async def health_check():
 
 
 @app.post("/upload", response_model=PaperStatus)
-async def upload_paper(file: UploadFile = File(...)):
+async def upload_paper(
+    file: UploadFile = File(...),
+    source_label: Optional[str] = Form(None),
+    source_url: Optional[str] = Form(None),
+    citation_hint: Optional[str] = Form(None),
+):
     """
     Upload and process a PDF paper.
     
@@ -719,6 +724,9 @@ async def upload_paper(file: UploadFile = File(...)):
                 original_filename=file.filename,
                 file_hash=file_hash,
                 created_at=created_at,
+                source_label=source_label,
+                source_url=source_url,
+                citation_hint=citation_hint,
             ),
             "summary_metadata": build_summary_metadata(parsed, chunks),
         }

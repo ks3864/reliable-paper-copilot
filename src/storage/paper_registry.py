@@ -115,13 +115,20 @@ def build_provenance_metadata(
     original_filename: Optional[str],
     file_hash: Optional[str],
     created_at: str,
+    source_label: Optional[str] = None,
+    source_url: Optional[str] = None,
+    citation_hint: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Build operator-visible provenance metadata for a paper record."""
+    normalized_source_label = (source_label or original_filename or None)
+    normalized_source_url = source_url.strip() if isinstance(source_url, str) and source_url.strip() else None
+    normalized_citation_hint = citation_hint.strip() if isinstance(citation_hint, str) and citation_hint.strip() else None
+
     return {
         "source_type": "uploaded_pdf",
-        "source_label": original_filename,
-        "source_url": None,
-        "citation_hint": None,
+        "source_label": normalized_source_label,
+        "source_url": normalized_source_url,
+        "citation_hint": normalized_citation_hint,
         "uploaded_via": "api_upload",
         "uploaded_at": created_at,
         "original_filename": original_filename,

@@ -122,6 +122,9 @@
 - [x] Add combined demo recap copy/download actions in the web UI
   - [x] Sub-task 1: wire the existing `/papers/{paper_id}/demo-recap/export` endpoint into UI buttons and preview behavior for live demos
 
+## Phase 15 — Upload Provenance UX
+- [x] Add optional upload-time provenance fields in the web UI and API so source label, source URL, and citation hint can be captured during ingestion
+
 ## Current priority order
 - No incomplete items currently listed.
 
