@@ -386,6 +386,22 @@ WEB_UI_HTML = dedent(
               </select>
               <div id="paper-picker-meta" class="paper-picker-meta">No papers loaded yet.</div>
             </div>
+            <section class="metadata-editor">
+              <h3>Demo question presets</h3>
+              <p class="muted">Load a packaged sample question into the ask box for faster live demos.</p>
+              <div class="control-grid">
+                <div>
+                  <label for="question-preset">Preset question</label>
+                  <select id="question-preset">
+                    <option value="">Select a packaged demo question</option>
+                  </select>
+                </div>
+                <div style="display: flex; align-items: end;">
+                  <button id="load-question-preset-button" class="button-secondary" type="button">Load preset question</button>
+                </div>
+              </div>
+              <div id="question-preset-meta" class="paper-picker-meta">No demo presets loaded yet.</div>
+            </section>
             <div>
               <label for="question">Question</label>
               <textarea id="question" placeholder="What dataset was used, and what limitations did the authors mention?" required></textarea>
@@ -453,6 +469,9 @@ WEB_UI_HTML = dedent(
         const paperSelect = document.getElementById("paper-id");
         const paperSearchInput = document.getElementById("paper-search");
         const paperPickerMeta = document.getElementById("paper-picker-meta");
+        const questionPresetSelect = document.getElementById("question-preset");
+        const loadQuestionPresetButton = document.getElementById("load-question-preset-button");
+        const questionPresetMeta = document.getElementById("question-preset-meta");
         const paperDetails = document.getElementById("paper-details");
         const paperSummary = document.getElementById("paper-summary");
         const paperSignals = document.getElementById("paper-signals");
@@ -479,7 +498,9 @@ WEB_UI_HTML = dedent(
         const operatorNotesInput = document.getElementById("operator-notes-input");
         const saveMetadataButton = document.getElementById("save-metadata-button");
         const metadataStatus = document.getElementById("metadata-status");
+        const questionInput = document.getElementById("question");
         let paperRecords = [];
+        let demoQuestionPresets = [];
 
         function setStatus(element, message, kind = "muted") {
           element.textContent = message;
@@ -736,6 +757,75 @@ WEB_UI_HTML = dedent(
             </article>
           `;
           }).join("")}</div>`;
+        }
+
+        function flattenDemoQuestions(questionSets) {
+          return (questionSets || []).flatMap((questionSet) => {
+            return (questionSet.questions || []).map((item) => ({
+              package_id: questionSet.package_id,
+              package_title: questionSet.title,
+              package_description: questionSet.description,
+              id: item.id,
+              question: item.question,
+              expected_focus: item.expected_focus,
+              value: `${questionSet.package_id}::${item.id}`,
+            }));
+          });
+        }
+
+        function renderQuestionPresetOptions(selectedValue = "") {
+          const presets = flattenDemoQuestions(demoQuestionPresets);
+          questionPresetSelect.innerHTML = '<option value="">Select a packaged demo question</option>';
+
+          for (const preset of presets) {
+            const option = document.createElement("option");
+            option.value = preset.value;
+            option.textContent = `${preset.package_title || preset.package_id}: ${preset.id}`;
+            if (preset.value === selectedValue) {
+              option.selected = true;
+            }
+            questionPresetSelect.appendChild(option);
+          }
+
+          if (!presets.length) {
+            questionPresetMeta.textContent = "No demo presets loaded yet.";
+            return [];
+          }
+
+          questionPresetMeta.textContent = `${presets.length} demo preset${presets.length === 1 ? "" : "s"} available from packaged sample questions.`;
+          return presets;
+        }
+
+        function updateQuestionPresetMeta() {
+          const presets = flattenDemoQuestions(demoQuestionPresets);
+          const selectedPreset = presets.find((item) => item.value === questionPresetSelect.value);
+          if (!selectedPreset) {
+            if (!presets.length) {
+              questionPresetMeta.textContent = "No demo presets loaded yet.";
+              return;
+            }
+            questionPresetMeta.textContent = `${presets.length} demo preset${presets.length === 1 ? "" : "s"} available from packaged sample questions.`;
+            return;
+          }
+
+          const detailParts = [selectedPreset.package_title || selectedPreset.package_id];
+          if (selectedPreset.expected_focus) {
+            detailParts.push(`Focus: ${selectedPreset.expected_focus}`);
+          }
+          questionPresetMeta.textContent = detailParts.join(" • ");
+        }
+
+        function loadSelectedQuestionPreset() {
+          const presets = flattenDemoQuestions(demoQuestionPresets);
+          const selectedPreset = presets.find((item) => item.value === questionPresetSelect.value);
+          if (!selectedPreset) {
+            setStatus(askStatus, "Choose a demo preset to load.", "error");
+            return;
+          }
+
+          questionInput.value = selectedPreset.question;
+          setStatus(askStatus, `Loaded demo preset ${selectedPreset.id}.`, "success");
+          updateQuestionPresetMeta();
         }
 
         function buildPaperSearchText(paper) {
@@ -1065,6 +1155,14 @@ WEB_UI_HTML = dedent(
           await updatePaperDetails(nextPaperId || "");
         }
 
+        async function refreshDemoQuestionPresets(selectedValue = "") {
+          const response = await fetch("/demo/question-presets");
+          const payload = await response.json();
+          demoQuestionPresets = Array.isArray(payload) ? payload : [];
+          renderQuestionPresetOptions(selectedValue);
+          updateQuestionPresetMeta();
+        }
+
         async function checkHealth() {
           try {
             const response = await fetch("/health");
@@ -1074,6 +1172,14 @@ WEB_UI_HTML = dedent(
             healthStatus.textContent = "unreachable";
           }
         }
+
+        questionPresetSelect.addEventListener("change", () => {
+          updateQuestionPresetMeta();
+        });
+
+        loadQuestionPresetButton.addEventListener("click", () => {
+          loadSelectedQuestionPreset();
+        });
 
         paperSearchInput.addEventListener("input", async () => {
           const previouslySelectedPaperId = paperSelect.value;
@@ -1235,6 +1341,7 @@ WEB_UI_HTML = dedent(
 
         checkHealth();
         refreshPapers();
+        refreshDemoQuestionPresets();
       </script>
     </body>
     </html>

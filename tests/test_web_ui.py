@@ -21,6 +21,9 @@ class WebUITests(unittest.TestCase):
         self.assertIn("Selected paper details", response.text)
         self.assertIn("Filter papers by title, file name, or id", response.text)
         self.assertIn("No papers loaded yet.", response.text)
+        self.assertIn("Demo question presets", response.text)
+        self.assertIn("Load preset question", response.text)
+        self.assertIn("No demo presets loaded yet.", response.text)
         self.assertIn("Retrieval mode", response.text)
         self.assertIn("Hybrid fusion", response.text)
 
@@ -49,6 +52,10 @@ class WebUITests(unittest.TestCase):
         self.assertIn("function updatePaperDetails", response.text)
         self.assertIn("function renderEvidence", response.text)
         self.assertIn("function renderAnswer", response.text)
+        self.assertIn("function flattenDemoQuestions", response.text)
+        self.assertIn("function renderQuestionPresetOptions", response.text)
+        self.assertIn("function updateQuestionPresetMeta", response.text)
+        self.assertIn("function loadSelectedQuestionPreset", response.text)
         self.assertIn("function buildPaperSearchText", response.text)
         self.assertIn("function sortPapersByRecency", response.text)
         self.assertIn("function getVisiblePapers", response.text)
@@ -83,12 +90,15 @@ class WebUITests(unittest.TestCase):
         self.assertIn('fetch("/ask"', response.text)
         self.assertIn('fetch("/papers"', response.text)
         self.assertIn('fetch("/health"', response.text)
+        self.assertIn('fetch("/demo/question-presets")', response.text)
         self.assertIn('fetch(`/papers/${paperId}/brief/export`)', response.text)
         self.assertIn('fetch(`/papers/${paperId}/activity?limit=5`)', response.text)
         self.assertIn('fetch(`/papers/${paperId}/activity/export?limit=5`)', response.text)
         self.assertIn('fetch(`/papers/${paperId}/metadata`, {', response.text)
         self.assertIn('method: "PATCH"', response.text)
         self.assertIn('fetch(`/papers/${paperId}`, { method: "DELETE" })', response.text)
+        self.assertIn('questionPresetSelect.addEventListener("change"', response.text)
+        self.assertIn('loadQuestionPresetButton.addEventListener("click"', response.text)
         self.assertIn('paperSearchInput.addEventListener("input"', response.text)
         self.assertIn('paperSelect.addEventListener("change"', response.text)
         self.assertIn('copyBriefButton.addEventListener("click"', response.text)
@@ -110,6 +120,18 @@ class WebUITests(unittest.TestCase):
         self.assertIn('dense=${Number(item.dense_weight).toFixed(1)}', response.text)
         self.assertIn('lexical=${Number(item.lexical_weight).toFixed(1)}', response.text)
         self.assertIn('id="retrieval-scores-table"', response.text)
+
+    def test_demo_question_presets_endpoint_returns_packaged_questions(self):
+        response = self.client.get("/demo/question-presets")
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertGreaterEqual(len(payload), 1)
+        first_set = payload[0]
+        self.assertIn("package_id", first_set)
+        self.assertIn("questions", first_set)
+        self.assertGreaterEqual(len(first_set["questions"]), 1)
+        self.assertIn("question", first_set["questions"][0])
 
 
 if __name__ == "__main__":

@@ -144,6 +144,19 @@ class PaperActivityItem(BaseModel):
     rrf_k: Optional[int] = None
 
 
+class DemoQuestionPreset(BaseModel):
+    id: str
+    question: str
+    expected_focus: Optional[str] = None
+
+
+class DemoQuestionSet(BaseModel):
+    package_id: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    questions: List[DemoQuestionPreset]
+
+
 def _get_paper_or_404(paper_id: str) -> Dict[str, Any]:
     paper = PAPERS.get(paper_id)
     if paper is None:
@@ -441,6 +454,40 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
 
     return "\n".join(lines)
 
+
+
+def _load_demo_question_sets() -> List[DemoQuestionSet]:
+    sample_packages_dir = Path("sample_packages")
+    if not sample_packages_dir.exists():
+        return []
+
+    question_sets: List[DemoQuestionSet] = []
+    for package_dir in sorted(path for path in sample_packages_dir.iterdir() if path.is_dir()):
+        manifest_path = package_dir / "manifest.json"
+        questions_path = package_dir / "questions.json"
+        if not manifest_path.exists() or not questions_path.exists():
+            continue
+
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        questions = json.loads(questions_path.read_text(encoding="utf-8"))
+        question_sets.append(
+            DemoQuestionSet(
+                package_id=manifest.get("package_id", package_dir.name),
+                title=manifest.get("title"),
+                description=manifest.get("description"),
+                questions=[
+                    DemoQuestionPreset(
+                        id=item.get("id", f"question-{index + 1}"),
+                        question=item["question"],
+                        expected_focus=item.get("expected_focus"),
+                    )
+                    for index, item in enumerate(questions)
+                    if item.get("question")
+                ],
+            )
+        )
+
+    return question_sets
 
 
 def _get_retriever_for_request(paper: Dict[str, Any], request: QuestionRequest) -> Retriever:
@@ -811,6 +858,12 @@ async def delete_paper(paper_id: str):
         deleted=True,
         deleted_artifacts=deleted_artifacts,
     )
+
+
+@app.get("/demo/question-presets", response_model=List[DemoQuestionSet])
+async def list_demo_question_presets():
+    """List packaged demo question presets for quickly loading canned paper questions in the UI."""
+    return _load_demo_question_sets()
 
 
 @app.get("/papers")

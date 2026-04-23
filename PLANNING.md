@@ -99,7 +99,7 @@
 - [x] Add a server-backed paper brief Markdown export endpoint for scripted demos and notes
 
 ## Current priority order
-1. Add question preset loading in the web UI from the packaged demo question set for faster live demos.
+1. [x] Add question preset loading in the web UI from the packaged demo question set for faster live demos.
 
 ## Notes
 - Work on one item per session
