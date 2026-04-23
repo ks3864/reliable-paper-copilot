@@ -118,6 +118,10 @@
 - [x] Add a combined demo recap Markdown export for handoff notes
   - [x] Sub-task 1: add a server-backed `/papers/{paper_id}/demo-recap/export` endpoint that combines the paper brief and recent activity recap into one Markdown artifact
 
+## Phase 14 — Demo Export UX Polish
+- [x] Add combined demo recap copy/download actions in the web UI
+  - [x] Sub-task 1: wire the existing `/papers/{paper_id}/demo-recap/export` endpoint into UI buttons and preview behavior for live demos
+
 ## Current priority order
 - No incomplete items currently listed.
 

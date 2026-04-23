@@ -355,6 +355,14 @@ WEB_UI_HTML = dedent(
                   <button id="download-activity-button" class="button-secondary" type="button">Download activity transcript</button>
                 </div>
               </section>
+              <section class="metadata-editor">
+                <h3>Export demo recap</h3>
+                <p class="muted">Copy or download one Markdown handoff that combines the paper brief with the recent activity recap.</p>
+                <div class="actions-row">
+                  <button id="copy-demo-recap-button" class="button-secondary" type="button">Copy demo recap</button>
+                  <button id="download-demo-recap-button" class="button-secondary" type="button">Download demo recap</button>
+                </div>
+              </section>
               <div class="actions-row">
                 <button id="copy-brief-button" class="button-secondary" type="button">Copy paper brief</button>
                 <button id="download-brief-button" class="button-secondary" type="button">Download paper brief</button>
@@ -498,6 +506,8 @@ WEB_UI_HTML = dedent(
         const downloadBriefButton = document.getElementById("download-brief-button");
         const copyActivityButton = document.getElementById("copy-activity-button");
         const downloadActivityButton = document.getElementById("download-activity-button");
+        const copyDemoRecapButton = document.getElementById("copy-demo-recap-button");
+        const downloadDemoRecapButton = document.getElementById("download-demo-recap-button");
         const deletePaperButton = document.getElementById("delete-paper-button");
         const briefStatus = document.getElementById("brief-status");
         const briefPreview = document.getElementById("brief-preview");
@@ -987,6 +997,8 @@ WEB_UI_HTML = dedent(
           downloadBriefButton.disabled = disabled;
           copyActivityButton.disabled = disabled;
           downloadActivityButton.disabled = disabled;
+          copyDemoRecapButton.disabled = disabled;
+          downloadDemoRecapButton.disabled = disabled;
           deletePaperButton.disabled = disabled;
         }
 
@@ -1069,6 +1081,47 @@ WEB_UI_HTML = dedent(
           }
         }
 
+        async function handleDemoRecapAction(action) {
+          const paperId = paperSelect.value;
+          if (!paperId) {
+            setStatus(briefStatus, "Select a paper first.", "error");
+            return;
+          }
+
+          setPaperActionState(true);
+          setStatus(briefStatus, "Preparing demo recap...", "muted");
+
+          try {
+            const recapMarkdown = await fetchPaperDemoRecapMarkdown(paperId);
+            briefPreview.textContent = recapMarkdown;
+            briefPreview.hidden = false;
+
+            const paper = paperRecords.find((item) => item.paper_id === paperId) || {};
+            const downloadName = `${paper.paper_id || paperId}-demo-recap.md`;
+
+            if (action === "copy") {
+              await navigator.clipboard.writeText(recapMarkdown);
+              setStatus(briefStatus, "Demo recap copied to clipboard.", "success");
+              return;
+            }
+
+            const blob = new Blob([recapMarkdown], { type: "text/markdown;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = downloadName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+          } catch (error) {
+            setStatus(briefStatus, error.message, "error");
+          } finally {
+            setPaperActionState(false);
+          }
+        }
+
         async function handleDeletePaper() {
           const paperId = paperSelect.value;
           if (!paperId) {
@@ -1130,6 +1183,23 @@ WEB_UI_HTML = dedent(
             } catch (error) {
               if (error instanceof SyntaxError) {
                 throw new Error(payload || "Failed to export paper activity transcript");
+              }
+              throw error;
+            }
+          }
+          return payload;
+        }
+
+        async function fetchPaperDemoRecapMarkdown(paperId) {
+          const response = await fetch(`/papers/${paperId}/demo-recap/export?activity_limit=5`);
+          const payload = await response.text();
+          if (!response.ok) {
+            try {
+              const parsed = JSON.parse(payload);
+              throw new Error(parsed.detail || "Failed to export paper demo recap");
+            } catch (error) {
+              if (error instanceof SyntaxError) {
+                throw new Error(payload || "Failed to export paper demo recap");
               }
               throw error;
             }
@@ -1315,6 +1385,14 @@ WEB_UI_HTML = dedent(
 
         downloadActivityButton.addEventListener("click", async () => {
           await handleActivityTranscriptAction("download");
+        });
+
+        copyDemoRecapButton.addEventListener("click", async () => {
+          await handleDemoRecapAction("copy");
+        });
+
+        downloadDemoRecapButton.addEventListener("click", async () => {
+          await handleDemoRecapAction("download");
         });
 
         deletePaperButton.addEventListener("click", async () => {
