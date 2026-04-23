@@ -128,8 +128,15 @@
 ## Phase 16 — Demo Shareability
 - [x] Add URL-backed web UI state for selected paper and demo preset so live demo views can be refreshed or shared without losing context
 
+## Phase 17 — Demo Reset Ergonomics
+- [ ] Add paper activity reset workflow for live demos
+  - [x] Sub-task 1: add an API route to clear persisted per-paper ask history without deleting the paper
+  - [ ] Sub-task 2: add a web UI clear-history action with confirmation and refresh the activity panel afterward
+
 ## Current priority order
-- No incomplete items currently listed.
+1. Add paper activity reset workflow for live demos.
+   - [x] Sub-task 1: add an API route to clear persisted per-paper ask history without deleting the paper.
+   - [ ] Sub-task 2: add a web UI clear-history action with confirmation and refresh the activity panel afterward.
 
 ## Notes
 - Work on one item per session

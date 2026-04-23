@@ -73,3 +73,39 @@ class RequestLogger:
                 events.append(event)
 
         return list(reversed(events[-limit:]))
+
+    def delete_events(
+        self,
+        *,
+        paper_id: Optional[str] = None,
+        endpoint: Optional[str] = None,
+    ) -> int:
+        if not self.log_path.exists():
+            return 0
+
+        kept_lines: List[str] = []
+        deleted_count = 0
+
+        with self.log_path.open("r", encoding="utf-8") as handle:
+            for raw_line in handle:
+                line = raw_line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    kept_lines.append(raw_line if raw_line.endswith("\n") else raw_line + "\n")
+                    continue
+
+                matches_paper = paper_id is None or event.get("paper_id") == paper_id
+                matches_endpoint = endpoint is None or event.get("endpoint") == endpoint
+                if matches_paper and matches_endpoint:
+                    deleted_count += 1
+                    continue
+
+                kept_lines.append(raw_line if raw_line.endswith("\n") else raw_line + "\n")
+
+        with self.log_path.open("w", encoding="utf-8") as handle:
+            handle.writelines(kept_lines)
+
+        return deleted_count

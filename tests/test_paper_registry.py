@@ -1045,6 +1045,77 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertIn("- Answer preview: The authors note that the cohort is small and from a single site.", response.text)
             self.assertIn("- Evidence cues: discussion (p. 8), limitations (p. 9)", response.text)
 
+    def test_delete_activity_route_clears_only_matching_ask_events(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            request_logger = api_main.RequestLogger(log_dir=tmp_path / "logs")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-activity-reset",
+                    "title": "Resettable Activity Paper",
+                    "status": "ready",
+                    "num_chunks": 2,
+                    "created_at": "2026-04-23T18:45:00Z",
+                }
+            )
+
+            request_logger.log(
+                request_logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-activity-reset",
+                    question="Delete this question",
+                    latency_ms=14.5,
+                    token_usage={"prompt_tokens": 8, "completion_tokens": 4, "total_tokens": 12},
+                    model_version="demo-model-v3",
+                )
+            )
+            request_logger.log(
+                request_logger.create_event(
+                    endpoint="/health",
+                    paper_id="paper-activity-reset",
+                    question=None,
+                    latency_ms=1.0,
+                    token_usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    model_version="demo-model-v3",
+                )
+            )
+            request_logger.log(
+                request_logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-activity-other",
+                    question="Keep this other paper question",
+                    latency_ms=9.0,
+                    token_usage={"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5},
+                    model_version="demo-model-v3",
+                )
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
+                api_main, "PAPERS", {}
+            ), patch.object(api_main, "REQUEST_LOGGER", request_logger):
+                client = TestClient(api_main.app)
+                response = client.delete("/papers/paper-activity-reset/activity")
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload["paper_id"], "paper-activity-reset")
+            self.assertTrue(payload["deleted"])
+            self.assertEqual(payload["deleted_events"], 1)
+            self.assertEqual(payload["remaining_events"], 0)
+            self.assertEqual(
+                request_logger.read_events(paper_id="paper-activity-reset", endpoint="/ask", limit=5),
+                [],
+            )
+            self.assertEqual(
+                len(request_logger.read_events(paper_id="paper-activity-other", endpoint="/ask", limit=5)),
+                1,
+            )
+            self.assertEqual(
+                len(request_logger.read_events(paper_id="paper-activity-reset", endpoint="/health", limit=5)),
+                1,
+            )
+
     def test_demo_recap_export_route_combines_brief_and_activity_sections(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)

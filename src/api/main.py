@@ -160,6 +160,13 @@ class PaperActivityResponse(BaseModel):
     items: List[PaperActivityItem]
 
 
+class PaperActivityResetResponse(BaseModel):
+    paper_id: str
+    deleted: bool
+    deleted_events: int
+    remaining_events: int
+
+
 class DemoQuestionPreset(BaseModel):
     id: str
     question: str
@@ -918,6 +925,21 @@ async def export_paper_activity_markdown(paper_id: str, limit: int = 10):
     return PlainTextResponse(
         _build_activity_markdown(paper, events),
         media_type="text/markdown; charset=utf-8",
+    )
+
+
+@app.delete("/papers/{paper_id}/activity", response_model=PaperActivityResetResponse)
+async def delete_paper_activity(paper_id: str):
+    """Clear persisted ask activity for one paper so demos can be reset without deleting the paper."""
+    _get_paper_or_404(paper_id)
+
+    deleted_events = REQUEST_LOGGER.delete_events(paper_id=paper_id, endpoint="/ask")
+    remaining_events = len(REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=50))
+    return PaperActivityResetResponse(
+        paper_id=paper_id,
+        deleted=True,
+        deleted_events=deleted_events,
+        remaining_events=remaining_events,
     )
 
 

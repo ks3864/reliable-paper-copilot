@@ -104,6 +104,48 @@ class RequestLoggingTests(unittest.TestCase):
             self.assertEqual([event["question"] for event in events], ["Second question?", "First question?"])
             self.assertTrue(all(event["endpoint"] == "/ask" for event in events))
 
+    def test_request_logger_deletes_filtered_events(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            logger = RequestLogger(log_dir=tmpdir)
+            logger.log(
+                logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-1",
+                    question="Delete me",
+                    latency_ms=10,
+                    token_usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                    model_version="model-a",
+                )
+            )
+            logger.log(
+                logger.create_event(
+                    endpoint="/health",
+                    paper_id="paper-1",
+                    question=None,
+                    latency_ms=1,
+                    token_usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    model_version="model-a",
+                )
+            )
+            logger.log(
+                logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-2",
+                    question="Keep me",
+                    latency_ms=20,
+                    token_usage={"prompt_tokens": 2, "completion_tokens": 1, "total_tokens": 3},
+                    model_version="model-b",
+                )
+            )
+
+            deleted_count = logger.delete_events(paper_id="paper-1", endpoint="/ask")
+            remaining_events = logger.read_events(limit=10)
+
+            self.assertEqual(deleted_count, 1)
+            self.assertEqual(len(remaining_events), 2)
+            self.assertEqual([event["endpoint"] for event in remaining_events], ["/ask", "/health"])
+            self.assertEqual([event["paper_id"] for event in remaining_events], ["paper-2", "paper-1"])
+
 
 if __name__ == "__main__":
     unittest.main()
