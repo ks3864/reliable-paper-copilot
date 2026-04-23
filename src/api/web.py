@@ -536,12 +536,38 @@ WEB_UI_HTML = dedent(
         const saveMetadataButton = document.getElementById("save-metadata-button");
         const metadataStatus = document.getElementById("metadata-status");
         const questionInput = document.getElementById("question");
+        const initialUiState = getInitialUiState();
         let paperRecords = [];
         let demoQuestionPresets = [];
 
         function setStatus(element, message, kind = "muted") {
           element.textContent = message;
           element.className = `status ${kind}`;
+        }
+
+        function getInitialUiState() {
+          const params = new URLSearchParams(window.location.search);
+          return {
+            paperId: params.get("paper_id") || "",
+            questionPreset: params.get("question_preset") || "",
+          };
+        }
+
+        function syncUrlState({ paperId = paperSelect.value, questionPreset = questionPresetSelect.value } = {}) {
+          const url = new URL(window.location.href);
+          if (paperId) {
+            url.searchParams.set("paper_id", paperId);
+          } else {
+            url.searchParams.delete("paper_id");
+          }
+
+          if (questionPreset) {
+            url.searchParams.set("question_preset", questionPreset);
+          } else {
+            url.searchParams.delete("question_preset");
+          }
+
+          history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
         }
 
         function formatFileSize(bytes) {
@@ -1325,11 +1351,13 @@ WEB_UI_HTML = dedent(
           const papers = payload.papers || [];
           paperRecords = papers;
 
-          const visiblePapers = renderPaperOptions(selectedPaperId);
+          const preferredPaperId = selectedPaperId || paperSelect.value || initialUiState.paperId || "";
+          const visiblePapers = renderPaperOptions(preferredPaperId);
           const fallbackPaperId = visiblePapers[0] && visiblePapers[0].paper_id;
-          const nextPaperId = selectedPaperId || paperSelect.value || fallbackPaperId || "";
+          const nextPaperId = preferredPaperId || fallbackPaperId || "";
           if (nextPaperId && !visiblePapers.some((paper) => paper.paper_id === nextPaperId)) {
             paperSelect.value = "";
+            syncUrlState({ paperId: "" });
             await updatePaperDetails("");
             return;
           }
@@ -1337,6 +1365,7 @@ WEB_UI_HTML = dedent(
           if (nextPaperId) {
             paperSelect.value = nextPaperId;
           }
+          syncUrlState({ paperId: nextPaperId || "" });
           await updatePaperDetails(nextPaperId || "");
         }
 
@@ -1344,7 +1373,15 @@ WEB_UI_HTML = dedent(
           const response = await fetch("/demo/question-presets");
           const payload = await response.json();
           demoQuestionPresets = Array.isArray(payload) ? payload : [];
-          renderQuestionPresetOptions(selectedValue);
+          const preferredQuestionPreset = selectedValue || questionPresetSelect.value || initialUiState.questionPreset || "";
+          const presets = renderQuestionPresetOptions(preferredQuestionPreset);
+          if (preferredQuestionPreset && !presets.some((item) => item.value === preferredQuestionPreset)) {
+            questionPresetSelect.value = "";
+            syncUrlState({ questionPreset: "" });
+          } else if (preferredQuestionPreset) {
+            questionPresetSelect.value = preferredQuestionPreset;
+            syncUrlState({ questionPreset: preferredQuestionPreset });
+          }
           updateQuestionPresetMeta();
         }
 
@@ -1360,6 +1397,7 @@ WEB_UI_HTML = dedent(
 
         questionPresetSelect.addEventListener("change", () => {
           updateQuestionPresetMeta();
+          syncUrlState({ questionPreset: questionPresetSelect.value });
         });
 
         loadQuestionPresetButton.addEventListener("click", () => {
@@ -1373,10 +1411,12 @@ WEB_UI_HTML = dedent(
             ? previouslySelectedPaperId
             : "";
           paperSelect.value = nextPaperId;
+          syncUrlState({ paperId: nextPaperId });
           await updatePaperDetails(nextPaperId);
         });
 
         paperSelect.addEventListener("change", async (event) => {
+          syncUrlState({ paperId: event.target.value });
           await updatePaperDetails(event.target.value);
         });
 
@@ -1553,8 +1593,8 @@ WEB_UI_HTML = dedent(
         });
 
         checkHealth();
-        refreshPapers();
-        refreshDemoQuestionPresets();
+        refreshPapers(initialUiState.paperId);
+        refreshDemoQuestionPresets(initialUiState.questionPreset);
       </script>
     </body>
     </html>

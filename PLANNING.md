@@ -125,6 +125,9 @@
 ## Phase 15 — Upload Provenance UX
 - [x] Add optional upload-time provenance fields in the web UI and API so source label, source URL, and citation hint can be captured during ingestion
 
+## Phase 16 — Demo Shareability
+- [x] Add URL-backed web UI state for selected paper and demo preset so live demo views can be refreshed or shared without losing context
+
 ## Current priority order
 - No incomplete items currently listed.
 

@@ -10,7 +10,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **Cross-Encoder Reranking**: Reorder retrieved passages with a higher-precision reranker
 - **Grounded Generation**: Answer questions with citations from the paper
 - **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
-- **Lightweight Web UI**: Browser-based upload and Q&A workflow served directly by the FastAPI app, including dense, lexical, and hybrid retrieval controls, per-chunk score breakdowns, and recent per-paper question history for demos/debugging
+- **Lightweight Web UI**: Browser-based upload and Q&A workflow served directly by the FastAPI app, including dense, lexical, and hybrid retrieval controls, per-chunk score breakdowns, recent per-paper question history, and URL-backed paper or preset selection for demos/debugging
 - **Persistent Paper Registry**: Stored paper metadata now includes artifact validation summaries and file size metadata for uploaded PDFs
 
 ## Architecture
