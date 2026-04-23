@@ -56,7 +56,7 @@ WEB_UI_HTML = dedent(
         input, textarea, select, button {
           font: inherit;
         }
-        input[type="file"], textarea, select {
+        input[type="file"], input[type="text"], textarea, select {
           width: 100%;
           box-sizing: border-box;
           border: 1px solid #d1d5db;
@@ -220,6 +220,16 @@ WEB_UI_HTML = dedent(
           gap: 10px;
           margin: 16px 0 0;
         }
+        .metadata-editor {
+          margin-top: 16px;
+          padding: 16px;
+          border-radius: 12px;
+          border: 1px solid #e5e7eb;
+          background: white;
+        }
+        .metadata-editor textarea {
+          min-height: 96px;
+        }
         .button-secondary {
           background: #eef2ff;
           color: #3730a3;
@@ -306,6 +316,31 @@ WEB_UI_HTML = dedent(
                 <span id="brief-status" class="status muted"></span>
               </div>
               <pre id="brief-preview" class="brief-preview" hidden></pre>
+              <section id="metadata-form" class="metadata-editor">
+                <h3>Edit operator metadata</h3>
+                <div class="control-grid">
+                  <div>
+                    <label for="source-label-input">Source label</label>
+                    <input id="source-label-input" type="text" placeholder="Curated arXiv export" />
+                  </div>
+                  <div>
+                    <label for="source-url-input">Source URL</label>
+                    <input id="source-url-input" type="text" placeholder="https://example.com/paper" />
+                  </div>
+                </div>
+                <div>
+                  <label for="citation-hint-input">Citation hint</label>
+                  <input id="citation-hint-input" type="text" placeholder="Nature 2024 supplementary appendix" />
+                </div>
+                <div>
+                  <label for="operator-notes-input">Operator notes (one per line)</label>
+                  <textarea id="operator-notes-input" placeholder="Add manual provenance checks, caveats, or follow-up tasks"></textarea>
+                </div>
+                <div class="actions-row">
+                  <button id="save-metadata-button" type="button">Save metadata</button>
+                  <span id="metadata-status" class="status muted"></span>
+                </div>
+              </section>
             </div>
             <div>
               <label for="paper-id">Paper</label>
@@ -394,6 +429,13 @@ WEB_UI_HTML = dedent(
         const deletePaperButton = document.getElementById("delete-paper-button");
         const briefStatus = document.getElementById("brief-status");
         const briefPreview = document.getElementById("brief-preview");
+        const metadataForm = document.getElementById("metadata-form");
+        const sourceLabelInput = document.getElementById("source-label-input");
+        const sourceUrlInput = document.getElementById("source-url-input");
+        const citationHintInput = document.getElementById("citation-hint-input");
+        const operatorNotesInput = document.getElementById("operator-notes-input");
+        const saveMetadataButton = document.getElementById("save-metadata-button");
+        const metadataStatus = document.getElementById("metadata-status");
         let paperRecords = [];
 
         function setStatus(element, message, kind = "muted") {
@@ -555,6 +597,22 @@ WEB_UI_HTML = dedent(
           setStatus(briefStatus, "", "muted");
           briefPreview.hidden = true;
           briefPreview.textContent = "";
+        }
+
+        function parseOperatorNotes(value) {
+          return String(value || "")
+            .split("\n")
+            .map((item) => item.trim())
+            .filter(Boolean);
+        }
+
+        function populateMetadataEditor(paper) {
+          const provenance = paper && paper.provenance || {};
+          sourceLabelInput.value = provenance.source_label || "";
+          sourceUrlInput.value = provenance.source_url || "";
+          citationHintInput.value = provenance.citation_hint || "";
+          operatorNotesInput.value = (paper && paper.operator_ingestion_notes || []).join("\n");
+          setStatus(metadataStatus, "", "muted");
         }
 
         function renderActivityItems(items) {
@@ -750,6 +808,19 @@ WEB_UI_HTML = dedent(
           return payload;
         }
 
+        async function savePaperMetadata(paperId, payload) {
+          const response = await fetch(`/papers/${paperId}/metadata`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const responsePayload = await response.json();
+          if (!response.ok) {
+            throw new Error(responsePayload.detail || "Failed to update paper metadata");
+          }
+          return responsePayload;
+        }
+
         async function updatePaperDetails(paperId) {
           const paper = paperRecords.find((item) => item.paper_id === paperId);
           if (!paper) {
@@ -811,6 +882,7 @@ WEB_UI_HTML = dedent(
           paperActivity.innerHTML = renderDetailCard("Recent question history", '<p class="muted">Loading recent activity...</p>');
           paperDetails.hidden = false;
           resetBriefUi();
+          populateMetadataEditor(paper);
 
           try {
             const activity = await fetchPaperActivity(paperId);
@@ -864,6 +936,43 @@ WEB_UI_HTML = dedent(
 
         deletePaperButton.addEventListener("click", async () => {
           await handleDeletePaper();
+        });
+
+        saveMetadataButton.addEventListener("click", async () => {
+          const paperId = paperSelect.value;
+          if (!paperId) {
+            setStatus(metadataStatus, "Select a paper first.", "error");
+            return;
+          }
+
+          saveMetadataButton.disabled = true;
+          setStatus(metadataStatus, "Saving operator metadata...", "muted");
+
+          try {
+            const paper = paperRecords.find((item) => item.paper_id === paperId) || {};
+            const provenance = paper.provenance || {};
+            const operatorNotes = parseOperatorNotes(operatorNotesInput.value);
+            const operatorUpdateCount = Number(provenance.operator_update_count || 0) + 1;
+
+            await savePaperMetadata(paperId, {
+              operator_ingestion_notes: operatorNotes,
+              provenance: {
+                source_label: sourceLabelInput.value.trim() || null,
+                source_url: sourceUrlInput.value.trim() || null,
+                citation_hint: citationHintInput.value.trim() || null,
+                last_operator_update_at: new Date().toISOString(),
+                last_operator_update_source: "web-ui",
+                operator_update_count: operatorUpdateCount,
+              },
+            });
+
+            await refreshPapers(paperId);
+            setStatus(metadataStatus, "Metadata saved.", "success");
+          } catch (error) {
+            setStatus(metadataStatus, error.message, "error");
+          } finally {
+            saveMetadataButton.disabled = false;
+          }
         });
 
         uploadForm.addEventListener("submit", async (event) => {
