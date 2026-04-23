@@ -95,6 +95,12 @@
    - [x] Sub-task 1: include answer previews and evidence cues in recent paper activity API responses, transcript exports, and the web UI history panel.
    - [x] Sub-task 2: include retrieval configuration recaps in recent paper activity API responses, transcript exports, and the web UI history panel.
 
+## Phase 9 — Demo Export Polish
+- [x] Add a server-backed paper brief Markdown export endpoint for scripted demos and notes
+
+## Current priority order
+1. Add question preset loading in the web UI from the packaged demo question set for faster live demos.
+
 ## Notes
 - Work on one item per session
 - Commit after each item with a descriptive message

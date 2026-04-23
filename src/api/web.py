@@ -792,88 +792,16 @@ WEB_UI_HTML = dedent(
           return visiblePapers;
         }
 
-        function buildBriefMarkdown(brief) {
-          const overview = brief.overview || {};
-          const studySignals = brief.study_signals || {};
-          const ingestion = brief.ingestion || {};
-          const artifactValidation = ingestion.artifact_validation || {};
-          const provenance = ingestion.provenance || {};
-
-          const formatList = (items, fallback = "None") => {
-            if (!items || !items.length) {
-              return fallback;
-            }
-            return items.map((item) => `- ${item}`).join("\n");
-          };
-
-          const formatEntries = (entries) => {
-            const rows = Object.entries(entries || {});
-            if (!rows.length) {
-              return "None";
-            }
-            return rows.map(([key, value]) => `- ${key}: ${value}`).join("\n");
-          };
-
-          return [
-            `# ${brief.title || brief.paper_id}`,
-            "",
-            `- Paper ID: ${brief.paper_id}`,
-            `- Status: ${brief.status || "unknown"}`,
-            `- Original filename: ${brief.original_filename || "Unknown"}`,
-            `- Created: ${brief.created_at || "Unknown"}`,
-            "",
-            "## Overview",
-            `- Authors: ${(overview.authors || []).join(", ") || "Unknown"}`,
-            `- Pages: ${overview.page_count || 0}`,
-            `- Chunks: ${overview.num_chunks || 0}`,
-            `- Sections: ${overview.section_count || 0}`,
-            `- Tables: ${overview.tables_count || 0}`,
-            `- Total word count: ${overview.total_word_count || 0}`,
-            `- Section names: ${(overview.section_names || []).join(", ") || "None"}`,
-            `- Abstract preview: ${overview.abstract_preview || "Not available"}`,
-            "",
-            "## Study signals",
-            "### Datasets",
-            formatList(studySignals.datasets),
-            "",
-            "### Sample sizes",
-            formatList((studySignals.sample_sizes || []).map(String)),
-            "",
-            "### Limitations",
-            formatList(studySignals.limitations),
-            "",
-            "### Inclusion criteria",
-            formatList(studySignals.inclusion_criteria),
-            "",
-            "### Exclusion criteria",
-            formatList(studySignals.exclusion_criteria),
-            "",
-            "### Extracted counts",
-            formatEntries(studySignals.counts),
-            "",
-            "## Ingestion",
-            `- Artifacts complete: ${artifactValidation.all_required_present ? "yes" : "no"}`,
-            `- Missing required artifacts: ${(artifactValidation.missing_required || []).join(", ") || "None"}`,
-            `- Source label: ${provenance.source_label || "Unknown"}`,
-            `- Uploaded via: ${provenance.uploaded_via || "Unknown"}`,
-            `- Source URL: ${provenance.source_url || "Unknown"}`,
-            "",
-            "### Automated ingestion notes",
-            formatList(ingestion.ingestion_notes),
-            "",
-            "### Operator notes",
-            formatList(ingestion.operator_ingestion_notes),
-            "",
-            "### Chunking strategies",
-            formatEntries(overview.chunking_strategies),
-          ].join("\n");
-        }
-
-        async function fetchPaperBrief(paperId) {
-          const response = await fetch(`/papers/${paperId}/brief`);
-          const payload = await response.json();
+        async function fetchPaperBriefMarkdown(paperId) {
+          const response = await fetch(`/papers/${paperId}/brief/export`);
+          const payload = await response.text();
           if (!response.ok) {
-            throw new Error(payload.detail || "Failed to load paper brief");
+            try {
+              const parsed = JSON.parse(payload);
+              throw new Error(parsed.detail || "Failed to load paper brief");
+            } catch (error) {
+              throw new Error(payload || "Failed to load paper brief");
+            }
           }
           return payload;
         }
@@ -897,8 +825,7 @@ WEB_UI_HTML = dedent(
           setStatus(briefStatus, "Preparing paper brief...", "muted");
 
           try {
-            const brief = await fetchPaperBrief(paperId);
-            const briefMarkdown = buildBriefMarkdown(brief);
+            const briefMarkdown = await fetchPaperBriefMarkdown(paperId);
             briefPreview.textContent = briefMarkdown;
             briefPreview.hidden = false;
 
@@ -912,7 +839,7 @@ WEB_UI_HTML = dedent(
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
             anchor.href = url;
-            anchor.download = `${brief.paper_id}-paper-brief.md`;
+            anchor.download = `${paperId}-paper-brief.md`;
             document.body.appendChild(anchor);
             anchor.click();
             anchor.remove();

@@ -412,6 +412,16 @@ class PaperRegistryApiTests(unittest.TestCase):
                     "Persistent import",
                 )
 
+                brief_export_response = client.get("/papers/paper-2/brief/export")
+                self.assertEqual(brief_export_response.status_code, 200)
+                self.assertIn("text/markdown", brief_export_response.headers["content-type"])
+                self.assertIn("# Persistent Paper", brief_export_response.text)
+                self.assertIn("- Paper ID: paper-2", brief_export_response.text)
+                self.assertIn("### Datasets", brief_export_response.text)
+                self.assertIn("- MIMIC-III", brief_export_response.text)
+                self.assertIn("### Operator notes", brief_export_response.text)
+                self.assertIn("- Flag missing appendix links", brief_export_response.text)
+
     def test_metadata_patch_route_updates_operator_fields(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             registry = PaperRegistry(Path(tmpdir) / "papers" / "registry.json")

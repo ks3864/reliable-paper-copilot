@@ -213,6 +213,80 @@ def _build_paper_brief(paper: Dict[str, Any]) -> PaperBrief:
     )
 
 
+def _build_paper_brief_markdown(brief: PaperBrief) -> str:
+    def _format_list(items: List[Any], fallback: str = "None") -> str:
+        if not items:
+            return fallback
+        return "\n".join(f"- {item}" for item in items)
+
+    def _format_entries(entries: Dict[str, Any]) -> str:
+        if not entries:
+            return "None"
+        return "\n".join(f"- {key}: {value}" for key, value in entries.items())
+
+    overview = brief.overview or {}
+    study_signals = brief.study_signals or {}
+    ingestion = brief.ingestion or {}
+    artifact_validation = ingestion.get("artifact_validation") or {}
+    provenance = ingestion.get("provenance") or {}
+
+    return "\n".join(
+        [
+            f"# {brief.title or brief.paper_id}",
+            "",
+            f"- Paper ID: {brief.paper_id}",
+            f"- Status: {brief.status or 'unknown'}",
+            f"- Original filename: {brief.original_filename or 'Unknown'}",
+            f"- Created: {brief.created_at or 'Unknown'}",
+            "",
+            "## Overview",
+            f"- Authors: {', '.join(overview.get('authors') or []) or 'Unknown'}",
+            f"- Pages: {overview.get('page_count') or 0}",
+            f"- Chunks: {overview.get('num_chunks') or 0}",
+            f"- Sections: {overview.get('section_count') or 0}",
+            f"- Tables: {overview.get('tables_count') or 0}",
+            f"- Total word count: {overview.get('total_word_count') or 0}",
+            f"- Section names: {', '.join(overview.get('section_names') or []) or 'None'}",
+            f"- Abstract preview: {overview.get('abstract_preview') or 'Not available'}",
+            "",
+            "## Study signals",
+            "### Datasets",
+            _format_list(study_signals.get('datasets') or []),
+            "",
+            "### Sample sizes",
+            _format_list([str(item) for item in study_signals.get('sample_sizes') or []]),
+            "",
+            "### Limitations",
+            _format_list(study_signals.get('limitations') or []),
+            "",
+            "### Inclusion criteria",
+            _format_list(study_signals.get('inclusion_criteria') or []),
+            "",
+            "### Exclusion criteria",
+            _format_list(study_signals.get('exclusion_criteria') or []),
+            "",
+            "### Extracted counts",
+            _format_entries(study_signals.get('counts') or {}),
+            "",
+            "## Ingestion",
+            f"- Artifacts complete: {'yes' if artifact_validation.get('all_required_present') else 'no'}",
+            f"- Missing required artifacts: {', '.join(artifact_validation.get('missing_required') or []) or 'None'}",
+            f"- Source label: {provenance.get('source_label') or 'Unknown'}",
+            f"- Uploaded via: {provenance.get('uploaded_via') or 'Unknown'}",
+            f"- Source URL: {provenance.get('source_url') or 'Unknown'}",
+            "",
+            "### Automated ingestion notes",
+            _format_list(ingestion.get('ingestion_notes') or []),
+            "",
+            "### Operator notes",
+            _format_list(ingestion.get('operator_ingestion_notes') or []),
+            "",
+            "### Chunking strategies",
+            _format_entries(overview.get('chunking_strategies') or {}),
+        ]
+    )
+
+
 def _format_page_label(page_numbers: List[int]) -> Optional[str]:
     if not page_numbers:
         return None
@@ -628,6 +702,17 @@ async def get_paper_brief(paper_id: str):
     paper = _get_paper_or_404(paper_id)
 
     return _build_paper_brief(paper)
+
+
+@app.get("/papers/{paper_id}/brief/export", response_class=PlainTextResponse)
+async def export_paper_brief_markdown(paper_id: str):
+    """Return a compact paper brief as shareable Markdown for demos and notes."""
+    paper = _get_paper_or_404(paper_id)
+    brief = _build_paper_brief(paper)
+    return PlainTextResponse(
+        _build_paper_brief_markdown(brief),
+        media_type="text/markdown; charset=utf-8",
+    )
 
 
 @app.get("/papers/{paper_id}/activity", response_model=List[PaperActivityItem])
