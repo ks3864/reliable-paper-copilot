@@ -77,9 +77,10 @@
 ## Phase 6 — Reproducibility and Dev Ergonomics
 - [x] Make the pytest suite runnable from a fresh checkout without manual `PYTHONPATH` setup
 - [x] Add a demo script or Make target that runs the sample-package ingest and asks a canned demo question end-to-end
+- [x] Add a recent paper activity endpoint and UI panel for demo question history
 
 ## Current priority order
-1. No open items currently listed. Add the next portfolio-hardening or demo-ergonomics task here.
+1. Add operator-editable paper metadata fields in the web UI so provenance and manual notes can be updated without API calls.
 
 ## Notes
 - Work on one item per session

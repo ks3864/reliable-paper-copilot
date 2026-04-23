@@ -65,6 +65,45 @@ class RequestLoggingTests(unittest.TestCase):
             self.assertEqual(payload["model_version"], "test-model-v1")
             self.assertEqual(payload["num_chunks_retrieved"], 2)
 
+    def test_request_logger_reads_recent_filtered_events(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            logger = RequestLogger(log_dir=tmpdir)
+            logger.log(
+                logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-1",
+                    question="First question?",
+                    latency_ms=10,
+                    token_usage={"prompt_tokens": 1, "completion_tokens": 1, "total_tokens": 2},
+                    model_version="model-a",
+                )
+            )
+            logger.log(
+                logger.create_event(
+                    endpoint="/health",
+                    paper_id="paper-1",
+                    question=None,
+                    latency_ms=1,
+                    token_usage={"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                    model_version="model-a",
+                )
+            )
+            logger.log(
+                logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-1",
+                    question="Second question?",
+                    latency_ms=20,
+                    token_usage={"prompt_tokens": 2, "completion_tokens": 1, "total_tokens": 3},
+                    model_version="model-b",
+                )
+            )
+
+            events = logger.read_events(paper_id="paper-1", endpoint="/ask", limit=5)
+
+            self.assertEqual([event["question"] for event in events], ["Second question?", "First question?"])
+            self.assertTrue(all(event["endpoint"] == "/ask" for event in events))
+
 
 if __name__ == "__main__":
     unittest.main()

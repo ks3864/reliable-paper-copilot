@@ -873,6 +873,47 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertFalse(chunks_path.exists())
             self.assertFalse(index_path.exists())
 
+    def test_activity_route_returns_recent_question_history(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            request_logger = api_main.RequestLogger(log_dir=tmp_path / "logs")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-activity-api",
+                    "title": "Activity API Paper",
+                    "status": "ready",
+                    "num_chunks": 2,
+                    "created_at": "2026-04-22T20:16:00Z",
+                }
+            )
+
+            request_logger.log(
+                request_logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-activity-api",
+                    question="What dataset was used?",
+                    latency_ms=14.5,
+                    token_usage={"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6},
+                    model_version="demo-model-v1",
+                    extra={"num_chunks_retrieved": 3, "has_good_match": True, "sources": ["methods"]},
+                )
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
+                api_main, "PAPERS", {}
+            ), patch.object(api_main, "REQUEST_LOGGER", request_logger):
+                client = TestClient(api_main.app)
+                response = client.get("/papers/paper-activity-api/activity?limit=5")
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(len(payload), 1)
+            self.assertEqual(payload[0]["question"], "What dataset was used?")
+            self.assertEqual(payload[0]["num_chunks_retrieved"], 3)
+            self.assertTrue(payload[0]["has_good_match"])
+            self.assertEqual(payload[0]["sources"], ["methods"])
+
 
 if __name__ == "__main__":
     unittest.main()

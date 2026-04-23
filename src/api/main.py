@@ -125,6 +125,17 @@ class PaperDeleteResponse(BaseModel):
     deleted_artifacts: List[str] = []
 
 
+class PaperActivityItem(BaseModel):
+    timestamp: str
+    question: Optional[str] = None
+    latency_ms: float
+    num_chunks_retrieved: int = 0
+    has_good_match: Optional[bool] = None
+    model_version: str
+    token_usage: Dict[str, int] = {}
+    sources: List[str] = []
+
+
 @app.get("/", response_class=HTMLResponse)
 async def web_ui():
     """Serve a lightweight browser UI for uploading papers and asking questions."""
@@ -500,6 +511,33 @@ async def get_paper_brief(paper_id: str):
         paper = _hydrate_paper_cache(registry_record)
 
     return _build_paper_brief(paper)
+
+
+@app.get("/papers/{paper_id}/activity", response_model=List[PaperActivityItem])
+async def get_paper_activity(paper_id: str, limit: int = 10):
+    """Return recent ask activity for a paper to support demo review and debugging."""
+    paper = PAPERS.get(paper_id)
+    if paper is None:
+        registry_record = PAPER_REGISTRY.get_paper(paper_id)
+        if registry_record is None:
+            raise HTTPException(status_code=404, detail="Paper not found")
+        _hydrate_paper_cache(registry_record)
+
+    safe_limit = max(1, min(limit, 50))
+    events = REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=safe_limit)
+    return [
+        PaperActivityItem(
+            timestamp=event.get("timestamp", ""),
+            question=event.get("question"),
+            latency_ms=float(event.get("latency_ms", 0.0)),
+            num_chunks_retrieved=int(event.get("num_chunks_retrieved", 0)),
+            has_good_match=event.get("has_good_match"),
+            model_version=event.get("model_version", "unknown"),
+            token_usage=event.get("token_usage") or {},
+            sources=event.get("sources") or [],
+        )
+        for event in events
+    ]
 
 
 @app.patch("/papers/{paper_id}/metadata", response_model=PaperStatus)

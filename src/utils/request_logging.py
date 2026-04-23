@@ -5,8 +5,7 @@ from __future__ import annotations
 import json
 import time
 from pathlib import Path
-from typing import Any, Dict
-
+from typing import Any, Dict, List, Optional
 
 
 class RequestLogger:
@@ -46,3 +45,31 @@ class RequestLogger:
     def log(self, event: Dict[str, Any]) -> None:
         with self.log_path.open("a", encoding="utf-8") as handle:
             handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+
+    def read_events(
+        self,
+        *,
+        paper_id: Optional[str] = None,
+        endpoint: Optional[str] = None,
+        limit: int = 10,
+    ) -> List[Dict[str, Any]]:
+        if limit <= 0 or not self.log_path.exists():
+            return []
+
+        events: List[Dict[str, Any]] = []
+        with self.log_path.open("r", encoding="utf-8") as handle:
+            for line in handle:
+                line = line.strip()
+                if not line:
+                    continue
+                try:
+                    event = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                if paper_id is not None and event.get("paper_id") != paper_id:
+                    continue
+                if endpoint is not None and event.get("endpoint") != endpoint:
+                    continue
+                events.append(event)
+
+        return list(reversed(events[-limit:]))

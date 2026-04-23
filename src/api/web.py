@@ -298,6 +298,7 @@ WEB_UI_HTML = dedent(
               <div id="paper-summary" class="detail-grid"></div>
               <div id="paper-signals" class="detail-grid"></div>
               <div id="paper-notes" class="detail-grid"></div>
+              <div id="paper-activity" class="detail-grid"></div>
               <div class="actions-row">
                 <button id="copy-brief-button" class="button-secondary" type="button">Copy paper brief</button>
                 <button id="download-brief-button" class="button-secondary" type="button">Download paper brief</button>
@@ -381,6 +382,7 @@ WEB_UI_HTML = dedent(
         const paperSummary = document.getElementById("paper-summary");
         const paperSignals = document.getElementById("paper-signals");
         const paperNotes = document.getElementById("paper-notes");
+        const paperActivity = document.getElementById("paper-activity");
         const answerPanel = document.getElementById("answer-panel");
         const answerEl = document.getElementById("answer");
         const sourcesEl = document.getElementById("sources");
@@ -555,6 +557,20 @@ WEB_UI_HTML = dedent(
           briefPreview.textContent = "";
         }
 
+        function renderActivityItems(items) {
+          if (!items || !items.length) {
+            return '<p class="muted">No question history yet.</p>';
+          }
+
+          return `<ul class="detail-list">${items.map((item) => {
+            const status = item.has_good_match === null || item.has_good_match === undefined
+              ? "match unknown"
+              : item.has_good_match ? "good match" : "fallback or weak match";
+            const promptTokens = item.token_usage && item.token_usage.total_tokens ? `${item.token_usage.total_tokens} tokens` : "token usage unavailable";
+            return `<li><strong>${escapeHtml(item.question || "Unknown question")}</strong><br /><span class="muted">${escapeHtml(item.timestamp || "Unknown time")} • ${Number(item.latency_ms || 0).toFixed(2)} ms • ${item.num_chunks_retrieved || 0} chunk(s) • ${escapeHtml(status)} • ${escapeHtml(promptTokens)}</span></li>`;
+          }).join("")}</ul>`;
+        }
+
         function buildBriefMarkdown(brief) {
           const overview = brief.overview || {};
           const studySignals = brief.study_signals || {};
@@ -725,13 +741,23 @@ WEB_UI_HTML = dedent(
           }
         }
 
-        function updatePaperDetails(paperId) {
+        async function fetchPaperActivity(paperId) {
+          const response = await fetch(`/papers/${paperId}/activity?limit=5`);
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.detail || "Failed to load paper activity");
+          }
+          return payload;
+        }
+
+        async function updatePaperDetails(paperId) {
           const paper = paperRecords.find((item) => item.paper_id === paperId);
           if (!paper) {
             paperDetails.hidden = true;
             paperSummary.innerHTML = "";
             paperSignals.innerHTML = "";
             paperNotes.innerHTML = "";
+            paperActivity.innerHTML = "";
             resetBriefUi();
             return;
           }
@@ -782,8 +808,16 @@ WEB_UI_HTML = dedent(
             renderDetailCard("Operator notes", renderList(paper.operator_ingestion_notes, "No operator notes added yet")),
           ].join("");
 
+          paperActivity.innerHTML = renderDetailCard("Recent question history", '<p class="muted">Loading recent activity...</p>');
           paperDetails.hidden = false;
           resetBriefUi();
+
+          try {
+            const activity = await fetchPaperActivity(paperId);
+            paperActivity.innerHTML = renderDetailCard("Recent question history", renderActivityItems(activity));
+          } catch (error) {
+            paperActivity.innerHTML = renderDetailCard("Recent question history", `<p class="muted">${escapeHtml(error.message)}</p>`);
+          }
         }
 
         async function refreshPapers(selectedPaperId = "") {
@@ -803,7 +837,7 @@ WEB_UI_HTML = dedent(
             paperSelect.appendChild(option);
           }
 
-          updatePaperDetails(selectedPaperId || paperSelect.value);
+          await updatePaperDetails(selectedPaperId || paperSelect.value);
         }
 
         async function checkHealth() {
@@ -816,8 +850,8 @@ WEB_UI_HTML = dedent(
           }
         }
 
-        paperSelect.addEventListener("change", (event) => {
-          updatePaperDetails(event.target.value);
+        paperSelect.addEventListener("change", async (event) => {
+          await updatePaperDetails(event.target.value);
         });
 
         copyBriefButton.addEventListener("click", async () => {
