@@ -129,6 +129,8 @@ class PaperDeleteResponse(BaseModel):
 class PaperActivityItem(BaseModel):
     timestamp: str
     question: Optional[str] = None
+    answer_preview: Optional[str] = None
+    evidence_labels: List[str] = []
     latency_ms: float
     num_chunks_retrieved: int = 0
     has_good_match: Optional[bool] = None
@@ -276,6 +278,24 @@ def _format_activity_match_label(has_good_match: Optional[bool]) -> str:
     return "Good retrieval match" if has_good_match else "Fallback or weak retrieval match"
 
 
+def _build_activity_answer_preview(answer: Optional[str], limit: int = 240) -> Optional[str]:
+    cleaned = re.sub(r"\s+", " ", (answer or "").strip())
+    if not cleaned:
+        return None
+    if len(cleaned) <= limit:
+        return cleaned
+    return cleaned[: max(0, limit - 1)].rstrip() + "…"
+
+
+def _build_activity_evidence_labels(chunks: List[Dict[str, Any]], limit: int = 3) -> List[str]:
+    labels: List[str] = []
+    for chunk in chunks[:limit]:
+        evidence = _build_evidence_item(chunk)
+        location = f" ({evidence.page_label})" if evidence.page_label else ""
+        labels.append(f"{evidence.section}{location}")
+    return labels
+
+
 
 def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]) -> str:
     title = paper.get("title") or paper.get("paper_id") or "Unknown paper"
@@ -313,6 +333,8 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
                 f"- Model version: {event.get('model_version') or 'unknown'}",
                 f"- Token usage: prompt={int(token_usage.get('prompt_tokens', 0))}, completion={int(token_usage.get('completion_tokens', 0))}, total={int(token_usage.get('total_tokens', 0))}",
                 f"- Sources: {', '.join(event.get('sources') or []) or 'None'}",
+                f"- Answer preview: {event.get('answer_preview') or 'Not captured'}",
+                f"- Evidence cues: {', '.join(event.get('evidence_labels') or []) or 'None'}",
                 "",
             ]
         )
@@ -499,6 +521,8 @@ async def ask_question(request: QuestionRequest):
     # Generate answer
     result = generator.answer(request.question, top_k=request.top_k)
     latency_ms = (time.perf_counter() - started_at) * 1000
+    answer_preview = _build_activity_answer_preview(result.get("answer"))
+    evidence_labels = _build_activity_evidence_labels(result.get("retrieved_chunks", []))
 
     REQUEST_LOGGER.log(
         REQUEST_LOGGER.create_event(
@@ -512,6 +536,8 @@ async def ask_question(request: QuestionRequest):
                 "num_chunks_retrieved": result.get("num_chunks_retrieved", 0),
                 "sources": result.get("sources", []),
                 "has_good_match": result.get("confidence", {}).get("has_good_match"),
+                "answer_preview": answer_preview,
+                "evidence_labels": evidence_labels,
             },
         )
     )
@@ -579,6 +605,8 @@ async def get_paper_activity(paper_id: str, limit: int = 10):
         PaperActivityItem(
             timestamp=event.get("timestamp", ""),
             question=event.get("question"),
+            answer_preview=event.get("answer_preview"),
+            evidence_labels=event.get("evidence_labels") or [],
             latency_ms=float(event.get("latency_ms", 0.0)),
             num_chunks_retrieved=int(event.get("num_chunks_retrieved", 0)),
             has_good_match=event.get("has_good_match"),

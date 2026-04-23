@@ -902,7 +902,13 @@ class PaperRegistryApiTests(unittest.TestCase):
                     latency_ms=14.5,
                     token_usage={"prompt_tokens": 4, "completion_tokens": 2, "total_tokens": 6},
                     model_version="demo-model-v1",
-                    extra={"num_chunks_retrieved": 3, "has_good_match": True, "sources": ["methods"]},
+                    extra={
+                        "num_chunks_retrieved": 3,
+                        "has_good_match": True,
+                        "sources": ["methods"],
+                        "answer_preview": "The paper uses the MIMIC-III cohort for experiments.",
+                        "evidence_labels": ["methods (p. 4)", "appendix (p. 12)"],
+                    },
                 )
             )
 
@@ -916,6 +922,8 @@ class PaperRegistryApiTests(unittest.TestCase):
             payload = response.json()
             self.assertEqual(len(payload), 1)
             self.assertEqual(payload[0]["question"], "What dataset was used?")
+            self.assertEqual(payload[0]["answer_preview"], "The paper uses the MIMIC-III cohort for experiments.")
+            self.assertEqual(payload[0]["evidence_labels"], ["methods (p. 4)", "appendix (p. 12)"])
             self.assertEqual(payload[0]["num_chunks_retrieved"], 3)
             self.assertTrue(payload[0]["has_good_match"])
             self.assertEqual(payload[0]["sources"], ["methods"])
@@ -949,6 +957,8 @@ class PaperRegistryApiTests(unittest.TestCase):
                         "num_chunks_retrieved": 4,
                         "has_good_match": False,
                         "sources": ["discussion", "limitations"],
+                        "answer_preview": "The authors note that the cohort is small and from a single site.",
+                        "evidence_labels": ["discussion (p. 8)", "limitations (p. 9)"],
                     },
                 )
             )
@@ -967,6 +977,8 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertIn("- Match status: Fallback or weak retrieval match", response.text)
             self.assertIn("- Token usage: prompt=12, completion=5, total=17", response.text)
             self.assertIn("- Sources: discussion, limitations", response.text)
+            self.assertIn("- Answer preview: The authors note that the cohort is small and from a single site.", response.text)
+            self.assertIn("- Evidence cues: discussion (p. 8), limitations (p. 9)", response.text)
 
 
 if __name__ == "__main__":

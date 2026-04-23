@@ -61,6 +61,8 @@ class WebUITests(unittest.TestCase):
         self.assertIn("function parseOperatorNotes", response.text)
         self.assertIn("function populateMetadataEditor", response.text)
         self.assertIn("function renderActivityItems", response.text)
+        self.assertIn("Answer:</strong>", response.text)
+        self.assertIn("Evidence cues:", response.text)
         self.assertIn("function formatTimestamp", response.text)
         self.assertIn("function renderMetadataHistory", response.text)
         self.assertIn("Update ${Number(item.operator_update_count || 0) || \"?\"}", response.text)

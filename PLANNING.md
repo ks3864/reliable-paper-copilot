@@ -91,9 +91,8 @@
 - [x] Add client-side paper search and newest-first sorting in the web UI paper picker
 
 ## Current priority order
-1. Add a shareable question-and-answer transcript export for recent paper activity.
-   - [x] Sub-task 1: add an API endpoint that formats recent per-paper activity as Markdown for download or copy flows.
-   - [x] Sub-task 2: add a web UI action to copy or download the recent activity transcript.
+1. Add richer recent-activity recap details for demo follow-up.
+   - [x] Sub-task 1: include answer previews and evidence cues in recent paper activity API responses, transcript exports, and the web UI history panel.
 
 ## Notes
 - Work on one item per session
