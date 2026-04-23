@@ -83,6 +83,7 @@ For deployment guidance, including when to keep the app fully local versus when 
 - `GET /papers/{paper_id}/brief/export` - Export the paper brief as shareable Markdown for notes or demos
 - `GET /papers/{paper_id}/activity` - Fetch recent ask history for a paper, including a structured aggregate summary plus per-question latency, retrieval telemetry, and retrieval configuration recap
 - `GET /papers/{paper_id}/activity/export` - Export recent per-paper ask history as a shareable Markdown transcript with retrieval configuration details
+- `GET /papers/{paper_id}/demo-recap/export` - Export one combined Markdown handoff with the paper brief plus recent activity recap for demos or follow-up notes
 - `GET /health` - Health check
 
 `POST /ask` also accepts optional retrieval controls for experiments and debugging:
@@ -230,6 +231,12 @@ For a compact, shareable paper brief that rolls up the key metadata, extracted s
 
 ```bash
 curl --fail --show-error http://127.0.0.1:8000/papers/<paper_id>/brief
+```
+
+If you want one Markdown artifact that combines the brief with the most recent paper Q&A recap for a stakeholder handoff or demo follow-up:
+
+```bash
+curl --fail --show-error http://127.0.0.1:8000/papers/<paper_id>/demo-recap/export
 ```
 
 ### 6. Run the reproducible evaluation pass

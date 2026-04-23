@@ -1022,6 +1022,94 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertIn("- Answer preview: The authors note that the cohort is small and from a single site.", response.text)
             self.assertIn("- Evidence cues: discussion (p. 8), limitations (p. 9)", response.text)
 
+    def test_demo_recap_export_route_combines_brief_and_activity_sections(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            request_logger = api_main.RequestLogger(log_dir=tmp_path / "logs")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-demo-recap",
+                    "title": "Demo Recap Paper",
+                    "original_filename": "demo-recap.pdf",
+                    "status": "ready",
+                    "num_chunks": 6,
+                    "page_count": 9,
+                    "created_at": "2026-04-23T18:45:00Z",
+                    "artifact_validation": {
+                        "all_required_present": True,
+                        "missing_required": [],
+                    },
+                    "operator_ingestion_notes": ["Use for stakeholder walkthroughs"],
+                    "provenance": {
+                        "source_label": "Curated demo paper",
+                        "uploaded_via": "api_upload",
+                        "source_url": "https://example.com/demo-recap.pdf",
+                    },
+                    "summary_metadata": {
+                        "authors": ["Ada Lovelace", "Grace Hopper"],
+                        "abstract_preview": "This paper evaluates a reproducible retrieval pipeline.",
+                        "section_count": 4,
+                        "section_names": ["abstract", "methods", "results", "discussion"],
+                        "total_word_count": 1500,
+                        "tables_count": 2,
+                        "chunking_strategies": {"primary": "section-aware"},
+                        "extracted_summary": {
+                            "datasets": ["DemoSet"],
+                            "sample_sizes": [64],
+                            "limitations": ["Single-center cohort"],
+                            "inclusion_criteria": ["Adults over 18"],
+                            "exclusion_criteria": ["Missing baseline labs"],
+                            "counts": {"datasets": 1, "limitations": 1},
+                        },
+                    },
+                }
+            )
+
+            request_logger.log(
+                request_logger.create_event(
+                    endpoint="/ask",
+                    paper_id="paper-demo-recap",
+                    question="What dataset was used?",
+                    latency_ms=14.5,
+                    token_usage={"prompt_tokens": 8, "completion_tokens": 4, "total_tokens": 12},
+                    model_version="demo-model-v3",
+                    extra={
+                        "num_chunks_retrieved": 3,
+                        "has_good_match": True,
+                        "sources": ["methods"],
+                        "answer_preview": "The study used the DemoSet benchmark.",
+                        "evidence_labels": ["methods (p. 3)"],
+                        "retrieval_mode": "hybrid",
+                        "top_k": 3,
+                        "dense_weight": 1.0,
+                        "lexical_weight": 1.2,
+                        "rrf_k": 60,
+                    },
+                )
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(
+                api_main, "PAPERS", {}
+            ), patch.object(api_main, "REQUEST_LOGGER", request_logger):
+                client = TestClient(api_main.app)
+                response = client.get("/papers/paper-demo-recap/demo-recap/export?activity_limit=5")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("text/markdown", response.headers["content-type"])
+            self.assertIn("# Demo Recap Paper", response.text)
+            self.assertIn("## Overview", response.text)
+            self.assertIn("### Datasets", response.text)
+            self.assertIn("- DemoSet", response.text)
+            self.assertIn("## Demo recap", response.text)
+            self.assertIn("## Recent activity transcript for Demo Recap Paper", response.text)
+            self.assertIn("### Activity summary", response.text)
+            self.assertIn("### Activity", response.text)
+            self.assertIn("#### 1. What dataset was used?", response.text)
+            self.assertIn("- Source label: Curated demo paper", response.text)
+            self.assertIn("- Source URL: https://example.com/demo-recap.pdf", response.text)
+            self.assertIn("- Answer preview: The study used the DemoSet benchmark.", response.text)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -425,11 +425,18 @@ def _format_activity_retrieval_config(event: Dict[str, Any]) -> str:
 
 
 
-def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]) -> str:
+def _build_activity_markdown(
+    paper: Dict[str, Any],
+    events: List[Dict[str, Any]],
+    heading_level: int = 1,
+) -> str:
     title = paper.get("title") or paper.get("paper_id") or "Unknown paper"
     provenance = paper.get("provenance") or {}
+    heading_prefix = "#" * max(1, heading_level)
+    subheading_prefix = "#" * max(2, heading_level + 1)
+    item_heading_prefix = "#" * max(3, heading_level + 2)
     lines = [
-        f"# Recent activity transcript for {title}",
+        f"{heading_prefix} Recent activity transcript for {title}",
         "",
         f"- Paper ID: {paper.get('paper_id', 'unknown')}",
         f"- Status: {paper.get('status', 'unknown')}",
@@ -442,11 +449,11 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
 
     if not events:
         lines.extend([
-            "## Activity summary",
+            f"{subheading_prefix} Activity summary",
             "",
             "No recent question activity was recorded for this paper.",
             "",
-            "## Activity",
+            f"{subheading_prefix} Activity",
             "",
             "No recent question activity was recorded for this paper.",
         ])
@@ -455,7 +462,7 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
     activity_summary = _summarize_activity_events(events)
     lines.extend(
         [
-            "## Activity summary",
+            f"{subheading_prefix} Activity summary",
             "",
             f"- Questions included: {activity_summary['question_count']}",
             f"- Average latency: {activity_summary['average_latency_ms']:.2f} ms",
@@ -463,7 +470,7 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
             f"- Retrieval modes: {activity_summary['retrieval_modes_label']}",
             f"- Total tokens: {activity_summary['total_tokens']}",
             "",
-            "## Activity",
+            f"{subheading_prefix} Activity",
             "",
         ]
     )
@@ -471,7 +478,7 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
         token_usage = event.get("token_usage") or {}
         lines.extend(
             [
-                f"### {index}. {event.get('question') or 'Unknown question'}",
+                f"{item_heading_prefix} {index}. {event.get('question') or 'Unknown question'}",
                 f"- Timestamp: {event.get('timestamp') or 'Unknown'}",
                 f"- Latency: {float(event.get('latency_ms', 0.0)):.2f} ms",
                 f"- Retrieved chunks: {int(event.get('num_chunks_retrieved', 0))}",
@@ -487,6 +494,23 @@ def _build_activity_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]
         )
 
     return "\n".join(lines)
+
+
+def _build_demo_recap_markdown(paper: Dict[str, Any], events: List[Dict[str, Any]]) -> str:
+    brief_markdown = _build_paper_brief_markdown(_build_paper_brief(paper)).rstrip()
+    activity_markdown = _build_activity_markdown(paper, events, heading_level=2).strip()
+
+    return "\n".join(
+        [
+            brief_markdown,
+            "",
+            "## Demo recap",
+            "",
+            "This export combines the saved paper brief with recent question activity for a single demo-ready handoff.",
+            "",
+            activity_markdown,
+        ]
+    )
 
 
 def _summarize_activity_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -885,6 +909,18 @@ async def export_paper_activity_markdown(paper_id: str, limit: int = 10):
     events = REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=safe_limit)
     return PlainTextResponse(
         _build_activity_markdown(paper, events),
+        media_type="text/markdown; charset=utf-8",
+    )
+
+
+@app.get("/papers/{paper_id}/demo-recap/export", response_class=PlainTextResponse)
+async def export_paper_demo_recap_markdown(paper_id: str, activity_limit: int = 5):
+    """Return a combined paper brief and recent activity recap as shareable Markdown."""
+    paper = _get_paper_or_404(paper_id)
+    safe_limit = max(1, min(activity_limit, 50))
+    events = REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=safe_limit)
+    return PlainTextResponse(
+        _build_demo_recap_markdown(paper, events),
         media_type="text/markdown; charset=utf-8",
     )
 

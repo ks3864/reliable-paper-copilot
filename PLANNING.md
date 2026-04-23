@@ -114,6 +114,10 @@
   - [x] Sub-task 1: add recent activity summary metrics to transcript exports and the web UI activity panel
   - [x] Sub-task 2: expose a structured activity summary object from the recent activity API for scripted consumers
 
+## Phase 13 — Demo Handoff Polish
+- [x] Add a combined demo recap Markdown export for handoff notes
+  - [x] Sub-task 1: add a server-backed `/papers/{paper_id}/demo-recap/export` endpoint that combines the paper brief and recent activity recap into one Markdown artifact
+
 ## Current priority order
 - No incomplete items currently listed.
 

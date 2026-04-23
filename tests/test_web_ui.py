@@ -142,6 +142,12 @@ class WebUITests(unittest.TestCase):
         self.assertGreaterEqual(len(first_set["questions"]), 1)
         self.assertIn("question", first_set["questions"][0])
 
+    def test_demo_recap_export_endpoint_is_available(self):
+        response = self.client.get("/openapi.json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("/papers/{paper_id}/demo-recap/export", response.text)
+
 
 if __name__ == "__main__":
     unittest.main()
