@@ -198,10 +198,10 @@
 ## Phase 31 — Benchmark Snapshot API for Demo Credibility
 - [x] Add a latest-benchmark snapshot API endpoint for demo credibility and artifact navigation
   - [x] Sub-task 1: add a server-backed `/benchmark/latest` endpoint that surfaces the newest persisted evaluation metrics, retrieval config, and artifact paths
-  - [ ] Sub-task 2: surface the latest benchmark snapshot in the web UI for live demo credibility checks
+  - [x] Sub-task 2: surface the latest benchmark snapshot in the web UI for live demo credibility checks
 
 ## Current priority order
-1. Surface the latest benchmark snapshot in the web UI for live demo credibility checks.
+1. Add a final docs polish pass summarizing the benchmark snapshot panel and demo credibility workflow in the README.
 
 ## Notes
 - Work on one item per session

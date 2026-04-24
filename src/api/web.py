@@ -441,6 +441,14 @@ WEB_UI_HTML = dedent(
               </div>
             </section>
             <section class="metadata-editor">
+              <h3>Latest benchmark snapshot</h3>
+              <p class="muted">Use the newest persisted evaluation run as a quick credibility check before or during a live demo.</p>
+              <p id="benchmark-snapshot-meta" class="muted">Loading latest benchmark snapshot...</p>
+              <div id="benchmark-snapshot-summary" class="detail-grid">
+                <section class="detail-card"><h4>Benchmark status</h4><p class="muted">Loading latest benchmark snapshot...</p></section>
+              </div>
+            </section>
+            <section class="metadata-editor">
               <h3>Demo question presets</h3>
               <p class="muted">Load a packaged sample question into the ask box for faster live demos.</p>
               <div class="control-grid">
@@ -535,6 +543,8 @@ WEB_UI_HTML = dedent(
         const copyLibrarySummaryButton = document.getElementById("copy-library-summary-button");
         const downloadLibrarySummaryButton = document.getElementById("download-library-summary-button");
         const paperLibraryExportStatus = document.getElementById("paper-library-export-status");
+        const benchmarkSnapshotMeta = document.getElementById("benchmark-snapshot-meta");
+        const benchmarkSnapshotSummary = document.getElementById("benchmark-snapshot-summary");
         const questionPresetSelect = document.getElementById("question-preset");
         const loadQuestionPresetButton = document.getElementById("load-question-preset-button");
         const questionPresetMeta = document.getElementById("question-preset-meta");
@@ -782,6 +792,41 @@ WEB_UI_HTML = dedent(
           ].join("");
         }
 
+        function renderBenchmarkSnapshot(snapshot) {
+          if (!snapshot || !snapshot.available) {
+            benchmarkSnapshotMeta.textContent = snapshot && snapshot.message || "No persisted benchmark runs found yet.";
+            benchmarkSnapshotSummary.innerHTML = renderDetailCard("Benchmark status", '<p class="muted">Run <code>make eval</code> and generate benchmark artifacts to populate this panel.</p>');
+            return;
+          }
+
+          const metrics = snapshot.metrics || {};
+          const retrieval = snapshot.retrieval || {};
+          const artifactPaths = snapshot.artifact_paths || {};
+          benchmarkSnapshotMeta.textContent = `Latest run: ${snapshot.experiment_name || "Unknown experiment"} ${snapshot.pipeline_version ? `(${snapshot.pipeline_version})` : ""} • ${formatTimestamp(snapshot.generated_at || "")}`;
+          benchmarkSnapshotSummary.innerHTML = [
+            renderDetailCard("Quality", `
+              <p><strong>QA pairs:</strong> ${Number(snapshot.qa_pairs || 0)}</p>
+              <p><strong>Exact match:</strong> ${formatPercent(metrics.exact_match)}</p>
+              <p><strong>F1:</strong> ${formatPercent(metrics.f1)}</p>
+              <p><strong>Retrieval hit:</strong> ${formatPercent(metrics.retrieval_hit)}</p>
+              <p><strong>Refusal accuracy:</strong> ${formatPercent(metrics.refusal_accuracy)}</p>
+            `),
+            renderDetailCard("Retrieval config", `
+              <p><strong>Mode:</strong> ${escapeHtml(retrieval.mode || "dense")}</p>
+              <p><strong>Top K:</strong> ${Number(retrieval.top_k || 0)}</p>
+              <p><strong>Fusion:</strong> dense=${Number(retrieval.dense_weight ?? 1).toFixed(1)}, lexical=${Number(retrieval.lexical_weight ?? 1).toFixed(1)}, rrf_k=${Number(retrieval.rrf_k || 0)}</p>
+              <p><strong>Embedding model:</strong> ${escapeHtml(retrieval.embedding_model || "Unknown")}</p>
+              <p><strong>Chunk profile:</strong> ${escapeHtml(retrieval.chunk_profile || "Unknown")}</p>
+            `),
+            renderDetailCard("Artifacts", `
+              <p><strong>Run ID:</strong> ${escapeHtml(snapshot.run_id || "Unknown")}</p>
+              <p><strong>Run dir:</strong> <code>${escapeHtml(artifactPaths.run_dir || "Unavailable")}</code></p>
+              <p><strong>Index:</strong> <code>${escapeHtml(artifactPaths.index || "Unavailable")}</code></p>
+              <p><strong>Report:</strong> <code>${escapeHtml(artifactPaths.report_markdown || artifactPaths.summary || artifactPaths.results || "Unavailable")}</code></p>
+            `),
+          ].join("");
+        }
+
         function renderDetailCard(title, body) {
           return `<section class="detail-card"><h4>${title}</h4>${body}</section>`;
         }
@@ -805,6 +850,13 @@ WEB_UI_HTML = dedent(
             return "n/a";
           }
           return Number(value).toFixed(4);
+        }
+
+        function formatPercent(value) {
+          if (value === null || value === undefined) {
+            return "n/a";
+          }
+          return `${(Number(value) * 100).toFixed(1)}%`;
         }
 
         function escapeHtml(value) {
@@ -1302,6 +1354,15 @@ WEB_UI_HTML = dedent(
           return payload;
         }
 
+        async function fetchLatestBenchmarkSnapshot() {
+          const response = await fetch("/benchmark/latest");
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.detail || "Failed to load latest benchmark snapshot");
+          }
+          return payload;
+        }
+
         function setPaperActionState(disabled) {
           copyBriefButton.disabled = disabled;
           downloadBriefButton.disabled = disabled;
@@ -1764,14 +1825,16 @@ WEB_UI_HTML = dedent(
         }
 
         async function refreshPapers(selectedPaperId = "") {
-          const [papersResponse, librarySummary] = await Promise.all([
+          const [papersResponse, librarySummary, benchmarkSnapshot] = await Promise.all([
             fetch("/papers"),
             fetchPaperLibrarySummary(),
+            fetchLatestBenchmarkSnapshot(),
           ]);
           const payload = await papersResponse.json();
           const papers = payload.papers || [];
           paperRecords = papers;
           renderPaperLibrarySummary(librarySummary);
+          renderBenchmarkSnapshot(benchmarkSnapshot);
 
           const preferredPaperId = selectedPaperId || paperSelect.value || initialUiState.paperId || "";
           const visiblePapers = renderPaperOptions(preferredPaperId);
