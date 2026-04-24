@@ -133,6 +133,10 @@
   - [x] Sub-task 1: add an API route to clear persisted per-paper ask history without deleting the paper
   - [x] Sub-task 2: add a web UI clear-history action with confirmation and refresh the activity panel afterward
 
+## Phase 18 — Provenance Handoff Exports
+- [x] Add operator metadata history Markdown export for provenance review and demo handoff
+  - [x] Sub-task 1: add a server-backed `/papers/{paper_id}/metadata/history/export` endpoint that exports recent operator metadata edits as Markdown
+
 ## Current priority order
 1. No incomplete items remain in PLANNING.md.
 

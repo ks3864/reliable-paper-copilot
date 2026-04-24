@@ -85,6 +85,7 @@ For deployment guidance, including when to keep the app fully local versus when 
 - `GET /papers/{paper_id}/activity/export` - Export recent per-paper ask history as a shareable Markdown transcript with retrieval configuration details
 - `DELETE /papers/{paper_id}/activity` - Clear persisted ask history for one paper without deleting its artifacts, useful for resetting live demos
 - `GET /papers/{paper_id}/demo-recap/export` - Export one combined Markdown handoff with the paper brief plus recent activity recap for demos or follow-up notes. The built-in web UI also exposes copy and download actions for this recap.
+- `GET /papers/{paper_id}/metadata/history/export` - Export saved operator metadata edits as Markdown for provenance review or demo handoff notes
 - `GET /health` - Health check
 
 `POST /ask` also accepts optional retrieval controls for experiments and debugging:

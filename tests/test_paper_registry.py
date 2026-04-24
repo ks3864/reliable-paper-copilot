@@ -1116,6 +1116,69 @@ class PaperRegistryApiTests(unittest.TestCase):
                 1,
             )
 
+    def test_metadata_history_export_route_returns_markdown(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-metadata-export",
+                    "title": "Metadata Export Paper",
+                    "original_filename": "metadata-export.pdf",
+                    "status": "ready",
+                    "num_chunks": 2,
+                    "created_at": "2026-04-23T18:45:00Z",
+                    "operator_ingestion_notes": ["Most recent operator note"],
+                    "provenance": {
+                        "source_label": "Curated metadata paper",
+                        "source_url": "https://example.com/metadata-paper.pdf",
+                        "citation_hint": "Workshop version",
+                        "operator_update_count": 2,
+                    },
+                    "operator_metadata_history": [
+                        {
+                            "timestamp": "2026-04-23T18:40:00Z",
+                            "source": "api",
+                            "operator_update_count": 1,
+                            "operator_ingestion_notes": ["Initial triage note"],
+                            "source_label": "Initial upload label",
+                            "source_url": None,
+                            "citation_hint": None,
+                        },
+                        {
+                            "timestamp": "2026-04-23T18:44:00Z",
+                            "source": "web-ui",
+                            "operator_update_count": 2,
+                            "operator_ingestion_notes": ["Most recent operator note"],
+                            "source_label": "Curated metadata paper",
+                            "source_url": "https://example.com/metadata-paper.pdf",
+                            "citation_hint": "Workshop version",
+                        },
+                    ],
+                }
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(api_main, "PAPERS", {}):
+                client = TestClient(api_main.app)
+                response = client.get("/papers/paper-metadata-export/metadata/history/export?limit=1")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("text/markdown", response.headers["content-type"])
+            self.assertIn("# Operator metadata history for Metadata Export Paper", response.text)
+            self.assertIn("- Paper ID: paper-metadata-export", response.text)
+            self.assertIn("- Current source label: Curated metadata paper", response.text)
+            self.assertIn("- Operator update count: 2", response.text)
+            self.assertIn("- Included history items: 1", response.text)
+            self.assertIn("## Saved edits", response.text)
+            self.assertIn("### 1. Update 2", response.text)
+            self.assertIn("- Timestamp: 2026-04-23T18:44:00Z", response.text)
+            self.assertIn("- Source: web-ui", response.text)
+            self.assertIn("- Source label: Curated metadata paper", response.text)
+            self.assertIn("- Source URL: https://example.com/metadata-paper.pdf", response.text)
+            self.assertIn("- Citation hint: Workshop version", response.text)
+            self.assertIn("- Operator notes: Most recent operator note", response.text)
+            self.assertNotIn("Initial triage note", response.text)
+
     def test_demo_recap_export_route_combines_brief_and_activity_sections(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)

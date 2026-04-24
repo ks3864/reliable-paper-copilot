@@ -520,6 +520,53 @@ def _build_demo_recap_markdown(paper: Dict[str, Any], events: List[Dict[str, Any
     )
 
 
+def _build_metadata_history_markdown(paper: Dict[str, Any], limit: int = 10) -> str:
+    title = paper.get("title") or paper.get("paper_id") or "Unknown paper"
+    provenance = paper.get("provenance") or {}
+    history = list(paper.get("operator_metadata_history") or [])
+    safe_limit = max(1, min(limit, 50))
+    selected_history = history[-safe_limit:][::-1]
+    lines = [
+        f"# Operator metadata history for {title}",
+        "",
+        f"- Paper ID: {paper.get('paper_id', 'unknown')}",
+        f"- Status: {paper.get('status', 'unknown')}",
+        f"- Original filename: {paper.get('original_filename') or 'Unknown'}",
+        f"- Current source label: {provenance.get('source_label') or 'Unknown'}",
+        f"- Current source URL: {provenance.get('source_url') or 'Unknown'}",
+        f"- Current citation hint: {provenance.get('citation_hint') or 'Unknown'}",
+        f"- Operator update count: {int(provenance.get('operator_update_count') or 0)}",
+        f"- Generated at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+        f"- Included history items: {len(selected_history)}",
+        "",
+    ]
+
+    if not selected_history:
+        lines.extend([
+            "No operator metadata edits have been saved for this paper yet.",
+        ])
+        return "\n".join(lines)
+
+    lines.extend([
+        "## Saved edits",
+        "",
+    ])
+    for index, item in enumerate(selected_history, start=1):
+        notes = item.get("operator_ingestion_notes") or []
+        lines.extend([
+            f"### {index}. Update {item.get('operator_update_count') or '?'}",
+            f"- Timestamp: {item.get('timestamp') or 'Unknown'}",
+            f"- Source: {item.get('source') or 'Unknown'}",
+            f"- Source label: {item.get('source_label') or 'Unknown'}",
+            f"- Source URL: {item.get('source_url') or 'Unknown'}",
+            f"- Citation hint: {item.get('citation_hint') or 'Unknown'}",
+            f"- Operator notes: {'; '.join(notes) if notes else 'None'}",
+            "",
+        ])
+
+    return "\n".join(lines)
+
+
 def _summarize_activity_events(events: List[Dict[str, Any]]) -> Dict[str, Any]:
     if not events:
         return {
@@ -951,6 +998,16 @@ async def export_paper_demo_recap_markdown(paper_id: str, activity_limit: int = 
     events = REQUEST_LOGGER.read_events(paper_id=paper_id, endpoint="/ask", limit=safe_limit)
     return PlainTextResponse(
         _build_demo_recap_markdown(paper, events),
+        media_type="text/markdown; charset=utf-8",
+    )
+
+
+@app.get("/papers/{paper_id}/metadata/history/export", response_class=PlainTextResponse)
+async def export_paper_metadata_history_markdown(paper_id: str, limit: int = 10):
+    """Return operator metadata edit history for a paper as shareable Markdown."""
+    paper = _get_paper_or_404(paper_id)
+    return PlainTextResponse(
+        _build_metadata_history_markdown(paper, limit=limit),
         media_type="text/markdown; charset=utf-8",
     )
 
