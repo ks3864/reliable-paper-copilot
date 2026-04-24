@@ -156,14 +156,12 @@
 1. [x] Add a small export-status polish pass for library snapshot actions if preview or clipboard failures need clearer UI messaging.
 
 ## Phase 23 — URL-backed Retrieval Presets
-- [ ] Add URL-backed retrieval controls in the web UI so demo retrieval setup can survive refreshes and shared links
+- [x] Add URL-backed retrieval controls in the web UI so demo retrieval setup can survive refreshes and shared links
   - [x] Sub-task 1: sync the selected retrieval mode with the web UI URL state and restore it on load
-  - [ ] Sub-task 2: extend URL-backed state to include advanced retrieval knobs such as top-k and hybrid weights
+  - [x] Sub-task 2: extend URL-backed state to include advanced retrieval knobs such as top-k and hybrid weights
 
 ## Current priority order
-1. Add URL-backed retrieval controls in the web UI so demo retrieval setup can survive refreshes and shared links
-   - [x] Sub-task 1: sync the selected retrieval mode with the web UI URL state and restore it on load
-   - [ ] Sub-task 2: extend URL-backed state to include advanced retrieval knobs such as top-k and hybrid weights
+1. Add lightweight validation and reset affordances for shared retrieval URL presets in the web UI.
 
 ## Notes
 - Work on one item per session

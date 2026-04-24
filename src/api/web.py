@@ -566,6 +566,11 @@ WEB_UI_HTML = dedent(
         const saveMetadataButton = document.getElementById("save-metadata-button");
         const metadataStatus = document.getElementById("metadata-status");
         const questionInput = document.getElementById("question");
+        const retrievalModeInput = document.getElementById("retrieval-mode");
+        const topKInput = document.getElementById("top-k");
+        const denseWeightInput = document.getElementById("dense-weight");
+        const lexicalWeightInput = document.getElementById("lexical-weight");
+        const rrfKInput = document.getElementById("rrf-k");
         const initialUiState = getInitialUiState();
         let paperRecords = [];
         let demoQuestionPresets = [];
@@ -575,19 +580,37 @@ WEB_UI_HTML = dedent(
           element.className = `status ${kind}`;
         }
 
+        function parseIntegerParam(value, fallback) {
+          const parsed = Number.parseInt(value || "", 10);
+          return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function parseFloatParam(value, fallback) {
+          const parsed = Number.parseFloat(value || "");
+          return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
         function getInitialUiState() {
           const params = new URLSearchParams(window.location.search);
           return {
             paperId: params.get("paper_id") || "",
             questionPreset: params.get("question_preset") || "",
             retrievalMode: params.get("retrieval_mode") || "dense",
+            topK: parseIntegerParam(params.get("top_k"), 5),
+            denseWeight: parseFloatParam(params.get("dense_weight"), 1.0),
+            lexicalWeight: parseFloatParam(params.get("lexical_weight"), 1.0),
+            rrfK: parseIntegerParam(params.get("rrf_k"), 60),
           };
         }
 
         function syncUrlState({
           paperId = paperSelect.value,
           questionPreset = questionPresetSelect.value,
-          retrievalMode = document.getElementById("retrieval-mode").value,
+          retrievalMode = retrievalModeInput.value,
+          topK = parseIntegerParam(topKInput.value, 5),
+          denseWeight = parseFloatParam(denseWeightInput.value, 1.0),
+          lexicalWeight = parseFloatParam(lexicalWeightInput.value, 1.0),
+          rrfK = parseIntegerParam(rrfKInput.value, 60),
         } = {}) {
           const url = new URL(window.location.href);
           if (paperId) {
@@ -606,6 +629,30 @@ WEB_UI_HTML = dedent(
             url.searchParams.set("retrieval_mode", retrievalMode);
           } else {
             url.searchParams.delete("retrieval_mode");
+          }
+
+          if (topK !== 5) {
+            url.searchParams.set("top_k", String(topK));
+          } else {
+            url.searchParams.delete("top_k");
+          }
+
+          if (denseWeight !== 1.0) {
+            url.searchParams.set("dense_weight", String(denseWeight));
+          } else {
+            url.searchParams.delete("dense_weight");
+          }
+
+          if (lexicalWeight !== 1.0) {
+            url.searchParams.set("lexical_weight", String(lexicalWeight));
+          } else {
+            url.searchParams.delete("lexical_weight");
+          }
+
+          if (rrfK !== 60) {
+            url.searchParams.set("rrf_k", String(rrfK));
+          } else {
+            url.searchParams.delete("rrf_k");
           }
 
           history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
@@ -1654,9 +1701,15 @@ WEB_UI_HTML = dedent(
           syncUrlState({ questionPreset: questionPresetSelect.value });
         });
 
-        document.getElementById("retrieval-mode").addEventListener("change", (event) => {
+        retrievalModeInput.addEventListener("change", (event) => {
           syncUrlState({ retrievalMode: event.target.value });
         });
+
+        for (const input of [topKInput, denseWeightInput, lexicalWeightInput, rrfKInput]) {
+          input.addEventListener("change", () => {
+            syncUrlState();
+          });
+        }
 
         loadQuestionPresetButton.addEventListener("click", () => {
           loadSelectedQuestionPreset();
@@ -1818,11 +1871,11 @@ WEB_UI_HTML = dedent(
           event.preventDefault();
           const paperId = paperSelect.value;
           const question = document.getElementById("question").value.trim();
-          const retrievalMode = document.getElementById("retrieval-mode").value;
-          const topK = Number(document.getElementById("top-k").value || 5);
-          const denseWeight = Number(document.getElementById("dense-weight").value || 1.0);
-          const lexicalWeight = Number(document.getElementById("lexical-weight").value || 1.0);
-          const rrfK = Number(document.getElementById("rrf-k").value || 60);
+          const retrievalMode = retrievalModeInput.value;
+          const topK = Number(topKInput.value || 5);
+          const denseWeight = Number(denseWeightInput.value || 1.0);
+          const lexicalWeight = Number(lexicalWeightInput.value || 1.0);
+          const rrfK = Number(rrfKInput.value || 60);
 
           if (!paperId || !question) {
             setStatus(askStatus, "Select a paper and enter a question.", "error");
@@ -1870,7 +1923,11 @@ WEB_UI_HTML = dedent(
           }
         });
 
-        document.getElementById("retrieval-mode").value = initialUiState.retrievalMode || "dense";
+        retrievalModeInput.value = initialUiState.retrievalMode || "dense";
+        topKInput.value = String(initialUiState.topK || 5);
+        denseWeightInput.value = String(initialUiState.denseWeight || 1.0);
+        lexicalWeightInput.value = String(initialUiState.lexicalWeight || 1.0);
+        rrfKInput.value = String(initialUiState.rrfK || 60);
         checkHealth();
         refreshPapers(initialUiState.paperId);
         refreshDemoQuestionPresets(initialUiState.questionPreset);
