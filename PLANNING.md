@@ -162,6 +162,8 @@
 
 ## Current priority order
 1. Add lightweight validation and reset affordances for shared retrieval URL presets in the web UI.
+   - [x] Sub-task 1: validate shared retrieval URL parameters on load, clean invalid values, and surface a brief UI warning when defaults were restored.
+   - [ ] Sub-task 2: add a one-click retrieval preset reset action in the web UI to restore default controls and clear retrieval query params.
 
 ## Notes
 - Work on one item per session

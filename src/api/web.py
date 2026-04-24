@@ -486,6 +486,7 @@ WEB_UI_HTML = dedent(
                 <input id="rrf-k" type="number" min="1" step="1" value="60" />
               </div>
             </div>
+            <div id="retrieval-preset-status" class="status muted"></div>
             <button id="ask-button" type="submit">Ask</button>
             <div id="ask-status" class="status muted"></div>
           </form>
@@ -571,6 +572,7 @@ WEB_UI_HTML = dedent(
         const denseWeightInput = document.getElementById("dense-weight");
         const lexicalWeightInput = document.getElementById("lexical-weight");
         const rrfKInput = document.getElementById("rrf-k");
+        const retrievalPresetStatus = document.getElementById("retrieval-preset-status");
         const initialUiState = getInitialUiState();
         let paperRecords = [];
         let demoQuestionPresets = [];
@@ -590,17 +592,61 @@ WEB_UI_HTML = dedent(
           return Number.isFinite(parsed) ? parsed : fallback;
         }
 
+        function normalizeRetrievalUiState(rawState = {}) {
+          const allowedRetrievalModes = new Set(["dense", "lexical", "hybrid"]);
+          const issues = [];
+          const retrievalMode = allowedRetrievalModes.has(rawState.retrievalMode) ? rawState.retrievalMode : "dense";
+          if ((rawState.retrievalMode || "") && rawState.retrievalMode !== retrievalMode) {
+            issues.push(`retrieval_mode=${rawState.retrievalMode} → dense`);
+          }
+
+          const rawTopK = parseIntegerParam(rawState.topK, 5);
+          const topK = Math.min(10, Math.max(1, rawTopK));
+          if (rawTopK !== topK) {
+            issues.push(`top_k=${rawState.topK} → ${topK}`);
+          }
+
+          const rawDenseWeight = parseFloatParam(rawState.denseWeight, 1.0);
+          const denseWeight = rawDenseWeight >= 0 ? rawDenseWeight : 1.0;
+          if (rawDenseWeight !== denseWeight) {
+            issues.push(`dense_weight=${rawState.denseWeight} → 1.0`);
+          }
+
+          const rawLexicalWeight = parseFloatParam(rawState.lexicalWeight, 1.0);
+          const lexicalWeight = rawLexicalWeight >= 0 ? rawLexicalWeight : 1.0;
+          if (rawLexicalWeight !== lexicalWeight) {
+            issues.push(`lexical_weight=${rawState.lexicalWeight} → 1.0`);
+          }
+
+          const rawRrfK = parseIntegerParam(rawState.rrfK, 60);
+          const rrfK = rawRrfK >= 1 ? rawRrfK : 60;
+          if (rawRrfK !== rrfK) {
+            issues.push(`rrf_k=${rawState.rrfK} → ${rrfK}`);
+          }
+
+          return {
+            paperId: rawState.paperId || "",
+            questionPreset: rawState.questionPreset || "",
+            retrievalMode,
+            topK,
+            denseWeight,
+            lexicalWeight,
+            rrfK,
+            retrievalIssues: issues,
+          };
+        }
+
         function getInitialUiState() {
           const params = new URLSearchParams(window.location.search);
-          return {
+          return normalizeRetrievalUiState({
             paperId: params.get("paper_id") || "",
             questionPreset: params.get("question_preset") || "",
             retrievalMode: params.get("retrieval_mode") || "dense",
-            topK: parseIntegerParam(params.get("top_k"), 5),
-            denseWeight: parseFloatParam(params.get("dense_weight"), 1.0),
-            lexicalWeight: parseFloatParam(params.get("lexical_weight"), 1.0),
-            rrfK: parseIntegerParam(params.get("rrf_k"), 60),
-          };
+            topK: params.get("top_k"),
+            denseWeight: params.get("dense_weight"),
+            lexicalWeight: params.get("lexical_weight"),
+            rrfK: params.get("rrf_k"),
+          });
         }
 
         function syncUrlState({
@@ -613,6 +659,16 @@ WEB_UI_HTML = dedent(
           rrfK = parseIntegerParam(rrfKInput.value, 60),
         } = {}) {
           const url = new URL(window.location.href);
+          const normalizedState = normalizeRetrievalUiState({
+            paperId,
+            questionPreset,
+            retrievalMode,
+            topK,
+            denseWeight,
+            lexicalWeight,
+            rrfK,
+          });
+
           if (paperId) {
             url.searchParams.set("paper_id", paperId);
           } else {
@@ -625,37 +681,54 @@ WEB_UI_HTML = dedent(
             url.searchParams.delete("question_preset");
           }
 
-          if (retrievalMode && retrievalMode !== "dense") {
-            url.searchParams.set("retrieval_mode", retrievalMode);
+          if (normalizedState.retrievalMode && normalizedState.retrievalMode !== "dense") {
+            url.searchParams.set("retrieval_mode", normalizedState.retrievalMode);
           } else {
             url.searchParams.delete("retrieval_mode");
           }
 
-          if (topK !== 5) {
-            url.searchParams.set("top_k", String(topK));
+          if (normalizedState.topK !== 5) {
+            url.searchParams.set("top_k", String(normalizedState.topK));
           } else {
             url.searchParams.delete("top_k");
           }
 
-          if (denseWeight !== 1.0) {
-            url.searchParams.set("dense_weight", String(denseWeight));
+          if (normalizedState.denseWeight !== 1.0) {
+            url.searchParams.set("dense_weight", String(normalizedState.denseWeight));
           } else {
             url.searchParams.delete("dense_weight");
           }
 
-          if (lexicalWeight !== 1.0) {
-            url.searchParams.set("lexical_weight", String(lexicalWeight));
+          if (normalizedState.lexicalWeight !== 1.0) {
+            url.searchParams.set("lexical_weight", String(normalizedState.lexicalWeight));
           } else {
             url.searchParams.delete("lexical_weight");
           }
 
-          if (rrfK !== 60) {
-            url.searchParams.set("rrf_k", String(rrfK));
+          if (normalizedState.rrfK !== 60) {
+            url.searchParams.set("rrf_k", String(normalizedState.rrfK));
           } else {
             url.searchParams.delete("rrf_k");
           }
 
           history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+        }
+
+        function applyRetrievalUiState(state) {
+          retrievalModeInput.value = state.retrievalMode || "dense";
+          topKInput.value = String(state.topK || 5);
+          denseWeightInput.value = String(state.denseWeight || 1.0);
+          lexicalWeightInput.value = String(state.lexicalWeight || 1.0);
+          rrfKInput.value = String(state.rrfK || 60);
+        }
+
+        function renderRetrievalPresetStatus(state) {
+          const issues = state && state.retrievalIssues || [];
+          if (!issues.length) {
+            setStatus(retrievalPresetStatus, "", "muted");
+            return;
+          }
+          setStatus(retrievalPresetStatus, `Adjusted invalid retrieval URL preset values: ${issues.join(", ")}.`, "error");
         }
 
         function formatFileSize(bytes) {
@@ -1923,11 +1996,15 @@ WEB_UI_HTML = dedent(
           }
         });
 
-        retrievalModeInput.value = initialUiState.retrievalMode || "dense";
-        topKInput.value = String(initialUiState.topK || 5);
-        denseWeightInput.value = String(initialUiState.denseWeight || 1.0);
-        lexicalWeightInput.value = String(initialUiState.lexicalWeight || 1.0);
-        rrfKInput.value = String(initialUiState.rrfK || 60);
+        applyRetrievalUiState(initialUiState);
+        renderRetrievalPresetStatus(initialUiState);
+        syncUrlState({
+          retrievalMode: initialUiState.retrievalMode,
+          topK: initialUiState.topK,
+          denseWeight: initialUiState.denseWeight,
+          lexicalWeight: initialUiState.lexicalWeight,
+          rrfK: initialUiState.rrfK,
+        });
         checkHealth();
         refreshPapers(initialUiState.paperId);
         refreshDemoQuestionPresets(initialUiState.questionPreset);
