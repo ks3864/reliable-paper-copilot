@@ -580,10 +580,15 @@ WEB_UI_HTML = dedent(
           return {
             paperId: params.get("paper_id") || "",
             questionPreset: params.get("question_preset") || "",
+            retrievalMode: params.get("retrieval_mode") || "dense",
           };
         }
 
-        function syncUrlState({ paperId = paperSelect.value, questionPreset = questionPresetSelect.value } = {}) {
+        function syncUrlState({
+          paperId = paperSelect.value,
+          questionPreset = questionPresetSelect.value,
+          retrievalMode = document.getElementById("retrieval-mode").value,
+        } = {}) {
           const url = new URL(window.location.href);
           if (paperId) {
             url.searchParams.set("paper_id", paperId);
@@ -595,6 +600,12 @@ WEB_UI_HTML = dedent(
             url.searchParams.set("question_preset", questionPreset);
           } else {
             url.searchParams.delete("question_preset");
+          }
+
+          if (retrievalMode && retrievalMode !== "dense") {
+            url.searchParams.set("retrieval_mode", retrievalMode);
+          } else {
+            url.searchParams.delete("retrieval_mode");
           }
 
           history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
@@ -1643,6 +1654,10 @@ WEB_UI_HTML = dedent(
           syncUrlState({ questionPreset: questionPresetSelect.value });
         });
 
+        document.getElementById("retrieval-mode").addEventListener("change", (event) => {
+          syncUrlState({ retrievalMode: event.target.value });
+        });
+
         loadQuestionPresetButton.addEventListener("click", () => {
           loadSelectedQuestionPreset();
         });
@@ -1855,6 +1870,7 @@ WEB_UI_HTML = dedent(
           }
         });
 
+        document.getElementById("retrieval-mode").value = initialUiState.retrievalMode || "dense";
         checkHealth();
         refreshPapers(initialUiState.paperId);
         refreshDemoQuestionPresets(initialUiState.questionPreset);
