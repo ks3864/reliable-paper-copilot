@@ -92,6 +92,52 @@ def _slugify(value: str) -> str:
     return "".join(char.lower() if char.isalnum() else "-" for char in value).strip("-") or "experiment"
 
 
+def _collect_latest_run_dirs(output_root: Path) -> List[Path]:
+    latest_by_experiment: Dict[str, Path] = {}
+    for results_path in output_root.glob("*/*/*/results.json"):
+        run_dir = results_path.parent
+        experiment_key = "/".join(run_dir.parts[-3:-1])
+        previous = latest_by_experiment.get(experiment_key)
+        if previous is None or run_dir.name > previous.name:
+            latest_by_experiment[experiment_key] = run_dir
+    return sorted(latest_by_experiment.values(), key=lambda path: path.parts[-3:])
+
+
+def _build_benchmark_run_index(output_root: Path) -> str:
+    lines = [
+        "# Benchmark Run Index",
+        "",
+        "Latest benchmark artifacts per experiment.",
+        "",
+        "| Experiment | Pipeline Version | Latest Run ID | Artifacts |",
+        "| --- | --- | --- | --- |",
+    ]
+
+    for run_dir in _collect_latest_run_dirs(output_root):
+        experiment_name = run_dir.parts[-3]
+        pipeline_version = run_dir.parts[-2]
+        run_id = run_dir.parts[-1]
+        links = []
+        for filename, label in (
+            ("summary.md", "summary"),
+            ("benchmark_report.md", "report-md"),
+            ("benchmark_report.html", "report-html"),
+            ("results.json", "results"),
+        ):
+            artifact_path = run_dir / filename
+            if artifact_path.exists():
+                relative_path = artifact_path.relative_to(output_root)
+                links.append(f"[{label}]({relative_path.as_posix()})")
+        lines.append(
+            f"| {experiment_name} | {pipeline_version} | `{run_id}` | {' / '.join(links) if links else '-'} |"
+        )
+
+    if len(lines) == 6:
+        lines.append("| - | - | - | No benchmark runs found yet. |")
+
+    return "\n".join(lines) + "\n"
+
+
 def _build_summary_text(experiment_run: Dict[str, Any]) -> str:
     experiment = experiment_run["experiment"]
     aggregate = experiment_run["metrics"]["aggregate"]
@@ -170,9 +216,10 @@ def persist_experiment_run(
     output_root: str | Path = DEFAULT_OUTPUT_ROOT,
 ) -> Path:
     """Persist raw outputs plus a compact versioned summary for one experiment run."""
+    output_root = Path(output_root)
     experiment = experiment_run["experiment"]
     run_dir = (
-        Path(output_root)
+        output_root
         / _slugify(experiment["name"])
         / _slugify(experiment["pipeline_version"])
         / experiment_run["run_id"]
@@ -196,6 +243,10 @@ def persist_experiment_run(
     )
     (run_dir / "benchmark_report.html").write_text(
         render_benchmark_report_html(benchmark_summary),
+        encoding="utf-8",
+    )
+    (output_root / "benchmark_run_index.md").write_text(
+        _build_benchmark_run_index(output_root),
         encoding="utf-8",
     )
     return run_dir

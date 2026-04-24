@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from data.eval.eval_set import get_eval_chunks
-from src.evaluation.experiment_runner import load_experiment_config, run_experiment
+from src.evaluation.experiment_runner import load_experiment_config, persist_experiment_run, run_experiment
 
 
 def test_load_experiment_config_applies_defaults(tmp_path):
@@ -136,6 +136,35 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
     assert "## Answerability Slice Breakdown" in summary_text
     assert "| Slice | Count | Share | Exact Match | F1 | Retrieval Hit | Retrieval MRR | Refusal Rate | Refusal Accuracy |" in summary_text
     assert "## Refusal Confusion Summary" in summary_text
+
+    index_text = (tmp_path / "benchmark_run_index.md").read_text(encoding="utf-8")
+    assert "# Benchmark Run Index" in index_text
+    assert "| Experiment | Pipeline Version | Latest Run ID | Artifacts |" in index_text
+    assert "baseline-eval" in index_text
+    assert "phase3-pipeline-versioning-v1" in index_text
+    assert "[report-md](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
+    assert "[report-html](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
+
+
+def test_benchmark_run_index_keeps_latest_run_per_experiment(tmp_path):
+    config_path = Path("configs/experiments/baseline.yaml")
+    result = run_experiment(
+        config_path,
+        retriever_factory=lambda chunks, model_name: StubRetriever(),
+        generator_factory=lambda retriever, generator_name: StubGenerator(),
+        judge_factory=lambda enabled: None,
+    )
+    first = {**result, "run_id": "20260101T000000Z"}
+    second = {**result, "run_id": "20260101T000100Z"}
+
+    persist_experiment_run(first, output_root=tmp_path)
+    persist_experiment_run(second, output_root=tmp_path)
+
+    index_text = (tmp_path / "benchmark_run_index.md").read_text(encoding="utf-8")
+
+    assert first["run_id"] not in index_text
+    assert second["run_id"] in index_text
+    assert index_text.count("| baseline-eval |") == 1
 
 
 def test_run_experiment_uses_hybrid_retrieval_settings_from_config(tmp_path):

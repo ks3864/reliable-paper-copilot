@@ -165,8 +165,8 @@
   - [x] Sub-task 1: patch retrieval test doubles directly into the reranking test module instead of relying on optional dependency import state
 
 ## Current priority order
-1. Add a small benchmark artifact UX polish pass so report exports are easier to inspect from the repo and demo flow.
-   - [ ] Sub-task 1: add a compact benchmark run index Markdown artifact that links the latest generated report outputs per experiment.
+1. [x] Add a small benchmark artifact UX polish pass so report exports are easier to inspect from the repo and demo flow.
+   - [x] Sub-task 1: add a compact benchmark run index Markdown artifact that links the latest generated report outputs per experiment.
 
 ## Notes
 - Work on one item per session
