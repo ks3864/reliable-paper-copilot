@@ -201,7 +201,7 @@
   - [x] Sub-task 2: surface the latest benchmark snapshot in the web UI for live demo credibility checks
 
 ## Current priority order
-1. Add a final docs polish pass summarizing the benchmark snapshot panel and demo credibility workflow in the README.
+1. [x] Add a final docs polish pass summarizing the benchmark snapshot panel and demo credibility workflow in the README.
 
 ## Notes
 - Work on one item per session

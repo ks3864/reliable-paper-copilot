@@ -193,6 +193,7 @@ curl --fail --show-error -X POST \
 
 Copy the returned `paper_id`.
 If you prefer the browser flow, open `http://127.0.0.1:8000` and upload the same file through the built-in web UI.
+The UI now also includes a **Latest benchmark snapshot** panel near the paper picker, so you can sanity-check the newest persisted evaluation run without leaving the demo page.
 
 ### 4. Ask the packaged demo questions
 
@@ -261,6 +262,13 @@ make benchmark-report REPORT_RESULTS=artifacts/experiments/hybrid-retrieval/resu
 
 The generated `benchmark_report.md` and `benchmark_report.html` now include a retrieval-configuration recap, answerability slices, and a refusal confusion summary. Every persisted evaluation run also refreshes `artifacts/experiments/benchmark_run_index.md`, a repo-friendly index that links the latest run directory plus `summary.md`, `benchmark_report.md`, `benchmark_report.html`, and `results.json` for each experiment.
 
+The API also exposes `GET /benchmark/latest`, which returns the newest persisted run with:
+
+- experiment name, pipeline version, run id, and generated timestamp
+- core demo-facing metrics: exact match, F1, retrieval hit rate, and refusal accuracy
+- retrieval settings, including mode, top-k, fusion weights, embedding model, and chunk profile
+- direct repo-relative paths to the latest run directory, results payload, run index, and report artifacts when they exist
+
 A simple workflow after each `make eval` run is:
 
 1. Open `artifacts/experiments/benchmark_run_index.md` from the repo root to see the newest run per experiment.
@@ -280,6 +288,18 @@ The generated `benchmark_report.md` and `benchmark_report.html` are still the be
   - `Correct non-refusals`: good answered attempts on answerable questions.
 
 For quick comparisons between runs, start with this rule of thumb: prefer higher answerable-slice quality, higher unanswerable-slice refusal accuracy, lower false-refusal rate, and lower missed-refusal rate, even when overall exact match looks similar.
+
+### Live demo credibility workflow
+
+A lightweight pre-demo and in-demo loop now looks like this:
+
+1. Run `make eval EVAL_CONFIG=configs/experiments/hybrid-retrieval.yaml` whenever you want a fresh benchmark snapshot.
+2. Open `artifacts/experiments/benchmark_run_index.md` from the repo root if you want the full artifact view across experiments.
+3. Start the app with `make run-api`, then open the built-in web UI at `http://127.0.0.1:8000`.
+4. Use the **Latest benchmark snapshot** panel to confirm the newest run timestamp, scan the key metrics, and sanity-check the retrieval configuration you want to discuss live.
+5. If someone asks for proof behind the numbers, use the artifact links returned by `/benchmark/latest` or the run index to jump straight to `summary.md`, `benchmark_report.md`, or `benchmark_report.html`.
+
+That gives you a simple credibility story during demos: the same app page used for ingestion and Q&A also shows the latest persisted evaluation evidence and where to inspect the underlying benchmark artifacts.
 
 ### 7. Optional: demo the notebook walkthrough
 
