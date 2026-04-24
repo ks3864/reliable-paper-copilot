@@ -925,6 +925,48 @@ WEB_UI_HTML = dedent(
           briefPreview.textContent = "";
         }
 
+        function showMarkdownPreview(markdown) {
+          briefPreview.textContent = markdown;
+          briefPreview.hidden = false;
+        }
+
+        async function copyMarkdownWithStatus(markdown, successMessage, unavailableMessage, failurePrefix) {
+          if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+            setStatus(briefStatus, unavailableMessage, "error");
+            return false;
+          }
+
+          try {
+            await navigator.clipboard.writeText(markdown);
+            setStatus(briefStatus, successMessage, "success");
+            return true;
+          } catch (error) {
+            const detail = error instanceof Error && error.message ? ` ${error.message}` : "";
+            setStatus(briefStatus, `${failurePrefix}${detail} The preview is open below, or you can use Download instead.`, "error");
+            return false;
+          }
+        }
+
+        function downloadMarkdownWithStatus(markdown, filename, successMessage, failurePrefix) {
+          try {
+            const blob = new Blob([markdown], { type: "text/markdown;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setStatus(briefStatus, successMessage || `Downloaded ${anchor.download}.`, "success");
+            return true;
+          } catch (error) {
+            const detail = error instanceof Error && error.message ? ` ${error.message}` : "";
+            setStatus(briefStatus, `${failurePrefix}${detail} The preview is open below, so you can still copy it manually.`, "error");
+            return false;
+          }
+        }
+
         function parseOperatorNotes(value) {
           return String(value || "")
             .split("\n")
@@ -1280,8 +1322,7 @@ WEB_UI_HTML = dedent(
 
           try {
             const summaryMarkdown = await fetchPaperLibrarySummaryMarkdown();
-            briefPreview.textContent = summaryMarkdown;
-            briefPreview.hidden = false;
+            showMarkdownPreview(summaryMarkdown);
 
             if (action === "copy") {
               if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
@@ -1346,25 +1387,24 @@ WEB_UI_HTML = dedent(
 
           try {
             const briefMarkdown = await fetchPaperBriefMarkdown(paperId);
-            briefPreview.textContent = briefMarkdown;
-            briefPreview.hidden = false;
+            showMarkdownPreview(briefMarkdown);
 
             if (action === "copy") {
-              await navigator.clipboard.writeText(briefMarkdown);
-              setStatus(briefStatus, "Paper brief copied to clipboard.", "success");
+              await copyMarkdownWithStatus(
+                briefMarkdown,
+                "Paper brief copied to clipboard.",
+                "Clipboard copy is unavailable in this browser. The paper brief preview is open below, or you can use Download instead.",
+                "Could not copy the paper brief to the clipboard."
+              );
               return;
             }
 
-            const blob = new Blob([briefMarkdown], { type: "text/markdown;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = `${paperId}-paper-brief.md`;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            URL.revokeObjectURL(url);
-            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+            downloadMarkdownWithStatus(
+              briefMarkdown,
+              `${paperId}-paper-brief.md`,
+              null,
+              "Could not download the paper brief."
+            );
           } catch (error) {
             setStatus(briefStatus, error.message, "error");
           } finally {
@@ -1384,28 +1424,27 @@ WEB_UI_HTML = dedent(
 
           try {
             const transcriptMarkdown = await fetchPaperActivityTranscript(paperId);
-            briefPreview.textContent = transcriptMarkdown;
-            briefPreview.hidden = false;
+            showMarkdownPreview(transcriptMarkdown);
 
             const paper = paperRecords.find((item) => item.paper_id === paperId) || {};
             const downloadName = `${paper.paper_id || paperId}-activity-transcript.md`;
 
             if (action === "copy") {
-              await navigator.clipboard.writeText(transcriptMarkdown);
-              setStatus(briefStatus, "Activity transcript copied to clipboard.", "success");
+              await copyMarkdownWithStatus(
+                transcriptMarkdown,
+                "Activity transcript copied to clipboard.",
+                "Clipboard copy is unavailable in this browser. The activity transcript preview is open below, or you can use Download instead.",
+                "Could not copy the activity transcript to the clipboard."
+              );
               return;
             }
 
-            const blob = new Blob([transcriptMarkdown], { type: "text/markdown;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = downloadName;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            URL.revokeObjectURL(url);
-            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+            downloadMarkdownWithStatus(
+              transcriptMarkdown,
+              downloadName,
+              null,
+              "Could not download the activity transcript."
+            );
           } catch (error) {
             setStatus(briefStatus, error.message, "error");
           } finally {
@@ -1425,28 +1464,27 @@ WEB_UI_HTML = dedent(
 
           try {
             const recapMarkdown = await fetchPaperDemoRecapMarkdown(paperId);
-            briefPreview.textContent = recapMarkdown;
-            briefPreview.hidden = false;
+            showMarkdownPreview(recapMarkdown);
 
             const paper = paperRecords.find((item) => item.paper_id === paperId) || {};
             const downloadName = `${paper.paper_id || paperId}-demo-recap.md`;
 
             if (action === "copy") {
-              await navigator.clipboard.writeText(recapMarkdown);
-              setStatus(briefStatus, "Demo recap copied to clipboard.", "success");
+              await copyMarkdownWithStatus(
+                recapMarkdown,
+                "Demo recap copied to clipboard.",
+                "Clipboard copy is unavailable in this browser. The demo recap preview is open below, or you can use Download instead.",
+                "Could not copy the demo recap to the clipboard."
+              );
               return;
             }
 
-            const blob = new Blob([recapMarkdown], { type: "text/markdown;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = downloadName;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            URL.revokeObjectURL(url);
-            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+            downloadMarkdownWithStatus(
+              recapMarkdown,
+              downloadName,
+              null,
+              "Could not download the demo recap."
+            );
           } catch (error) {
             setStatus(briefStatus, error.message, "error");
           } finally {
@@ -1466,28 +1504,27 @@ WEB_UI_HTML = dedent(
 
           try {
             const metadataHistoryMarkdown = await fetchPaperMetadataHistoryMarkdown(paperId);
-            briefPreview.textContent = metadataHistoryMarkdown;
-            briefPreview.hidden = false;
+            showMarkdownPreview(metadataHistoryMarkdown);
 
             const paper = paperRecords.find((item) => item.paper_id === paperId) || {};
             const downloadName = `${paper.paper_id || paperId}-metadata-history.md`;
 
             if (action === "copy") {
-              await navigator.clipboard.writeText(metadataHistoryMarkdown);
-              setStatus(briefStatus, "Operator metadata history copied to clipboard.", "success");
+              await copyMarkdownWithStatus(
+                metadataHistoryMarkdown,
+                "Operator metadata history copied to clipboard.",
+                "Clipboard copy is unavailable in this browser. The operator metadata history preview is open below, or you can use Download instead.",
+                "Could not copy the operator metadata history to the clipboard."
+              );
               return;
             }
 
-            const blob = new Blob([metadataHistoryMarkdown], { type: "text/markdown;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = downloadName;
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            URL.revokeObjectURL(url);
-            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+            downloadMarkdownWithStatus(
+              metadataHistoryMarkdown,
+              downloadName,
+              null,
+              "Could not download the operator metadata history."
+            );
           } catch (error) {
             setStatus(briefStatus, error.message, "error");
           } finally {

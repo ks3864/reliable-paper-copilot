@@ -180,6 +180,9 @@
 - [x] Add direct latest-run folder links to the benchmark run index for faster artifact inspection from the repo root
   - [x] Sub-task 1: include a `run-dir` link alongside per-file artifact links in `benchmark_run_index.md`
 
+## Phase 27 — Export Action UX Consistency
+- [x] Add preview-aware clipboard and download fallback messaging for paper-scoped Markdown exports in the web UI
+
 ## Current priority order
 1. No open items queued. Pick the next smallest portfolio-visible polish task when work resumes.
 
