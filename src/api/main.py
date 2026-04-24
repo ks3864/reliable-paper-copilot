@@ -435,6 +435,32 @@ def _build_paper_library_summary(papers: List[Dict[str, Any]]) -> PaperLibrarySu
     )
 
 
+
+def _build_paper_library_summary_markdown(summary: PaperLibrarySummary) -> str:
+    latest_paper_label = summary.latest_paper_title or summary.latest_paper_id or "Unknown"
+    latest_created_at = summary.latest_created_at or "Unknown"
+
+    return "\n".join(
+        [
+            "# Paper library snapshot",
+            "",
+            f"- Generated at: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
+            f"- Total papers: {summary.total_papers}",
+            f"- Ready papers: {summary.ready_papers}",
+            f"- Papers with operator notes: {summary.papers_with_operator_notes}",
+            f"- Total pages: {summary.total_pages}",
+            f"- Total chunks: {summary.total_chunks}",
+            f"- Total file size bytes: {summary.total_file_size_bytes}",
+            "",
+            "## Latest paper",
+            f"- Paper: {latest_paper_label}",
+            f"- Paper ID: {summary.latest_paper_id or 'Unknown'}",
+            f"- Created: {latest_created_at}",
+        ]
+    )
+
+
+
 def _build_activity_evidence_labels(chunks: List[Dict[str, Any]], limit: int = 3) -> List[str]:
     labels: List[str] = []
     for chunk in chunks[:limit]:
@@ -1113,6 +1139,17 @@ async def get_paper_library_summary():
     """Return aggregate paper library stats for demo setup and quick walkthroughs."""
     papers = PAPER_REGISTRY.list_papers()
     return _build_paper_library_summary(papers)
+
+
+@app.get("/papers/summary/export", response_class=PlainTextResponse)
+async def export_paper_library_summary_markdown():
+    """Return aggregate paper library stats as shareable Markdown for demo setup notes."""
+    papers = PAPER_REGISTRY.list_papers()
+    summary = _build_paper_library_summary(papers)
+    return PlainTextResponse(
+        _build_paper_library_summary_markdown(summary),
+        media_type="text/markdown; charset=utf-8",
+    )
 
 
 @app.get("/papers")

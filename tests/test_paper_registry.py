@@ -1026,6 +1026,53 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertEqual(payload["latest_paper_title"], "Latest Paper")
             self.assertEqual(payload["latest_created_at"], "2026-04-23T20:16:00Z")
 
+    def test_paper_library_summary_export_route_returns_markdown_snapshot(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-summary-export-1",
+                    "title": "Exportable Earlier Paper",
+                    "status": "processing",
+                    "num_chunks": 4,
+                    "page_count": 6,
+                    "file_size_bytes": 2048,
+                    "created_at": "2026-04-22T20:16:00Z",
+                    "operator_ingestion_notes": [],
+                }
+            )
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-summary-export-2",
+                    "title": "Exportable Latest Paper",
+                    "status": "ready",
+                    "num_chunks": 7,
+                    "page_count": 9,
+                    "file_size_bytes": 4096,
+                    "created_at": "2026-04-23T20:16:00Z",
+                    "operator_ingestion_notes": ["Use for the main demo"],
+                }
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(api_main, "PAPERS", {}):
+                client = TestClient(api_main.app)
+                response = client.get("/papers/summary/export")
+
+            self.assertEqual(response.status_code, 200)
+            self.assertIn("text/markdown", response.headers["content-type"])
+            self.assertIn("# Paper library snapshot", response.text)
+            self.assertIn("- Total papers: 2", response.text)
+            self.assertIn("- Ready papers: 1", response.text)
+            self.assertIn("- Papers with operator notes: 1", response.text)
+            self.assertIn("- Total pages: 15", response.text)
+            self.assertIn("- Total chunks: 11", response.text)
+            self.assertIn("- Total file size bytes: 6144", response.text)
+            self.assertIn("## Latest paper", response.text)
+            self.assertIn("- Paper: Exportable Latest Paper", response.text)
+            self.assertIn("- Paper ID: paper-summary-export-2", response.text)
+            self.assertIn("- Created: 2026-04-23T20:16:00Z", response.text)
+
     def test_activity_export_route_returns_markdown_transcript(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)

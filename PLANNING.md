@@ -147,8 +147,15 @@
 ## Phase 21 — Demo Library Overview
 - [x] Add aggregate paper-library summary stats in the API and web UI for faster demo setup checks
 
+## Phase 22 — Demo Library Snapshot Export
+- [ ] Add shareable paper-library snapshot export workflow for demo setup and handoff
+  - [x] Sub-task 1: add a server-backed `/papers/summary/export` Markdown endpoint for the aggregate library snapshot
+  - [ ] Sub-task 2: add web UI copy/download actions for the library snapshot export
+
 ## Current priority order
-1. No incomplete items remain in PLANNING.md.
+1. Add shareable paper-library snapshot export workflow for demo setup and handoff.
+   - [x] Sub-task 1: add a server-backed `/papers/summary/export` Markdown endpoint for the aggregate library snapshot
+   - [ ] Sub-task 2: add web UI copy/download actions for the library snapshot export
 
 ## Notes
 - Work on one item per session
