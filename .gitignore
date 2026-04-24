@@ -32,6 +32,10 @@ models/
 
 # Logs
 *.log
+data/logs/
+
+# Runtime paper registry data
+data/papers/
 
 # Experiment artifacts
 artifacts/

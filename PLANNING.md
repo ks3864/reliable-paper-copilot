@@ -141,6 +141,9 @@
 - [x] Add operator metadata history copy/download actions in the web UI
   - [x] Sub-task 1: wire the existing `/papers/{paper_id}/metadata/history/export` endpoint into UI buttons and preview behavior for live provenance handoff
 
+## Phase 20 — Repo Hygiene
+- [x] Ignore runtime-generated local data artifacts so demo runs do not leave noisy untracked files in git status
+
 ## Current priority order
 1. No incomplete items remain in PLANNING.md.
 
