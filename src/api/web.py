@@ -363,10 +363,11 @@ WEB_UI_HTML = dedent(
               <div id="paper-activity" class="detail-grid"></div>
               <section class="metadata-editor">
                 <h3>Export activity transcript</h3>
-                <p class="muted">Copy or download the five most recent paper questions as a shareable Markdown transcript.</p>
+                <p class="muted">Copy or download the five most recent paper questions as a shareable Markdown transcript, or clear saved question history to reset a live demo.</p>
                 <div class="actions-row">
                   <button id="copy-activity-button" class="button-secondary" type="button">Copy activity transcript</button>
                   <button id="download-activity-button" class="button-secondary" type="button">Download activity transcript</button>
+                  <button id="clear-activity-button" class="button-secondary" type="button">Clear question history</button>
                 </div>
               </section>
               <section class="metadata-editor">
@@ -523,6 +524,7 @@ WEB_UI_HTML = dedent(
         const downloadBriefButton = document.getElementById("download-brief-button");
         const copyActivityButton = document.getElementById("copy-activity-button");
         const downloadActivityButton = document.getElementById("download-activity-button");
+        const clearActivityButton = document.getElementById("clear-activity-button");
         const copyDemoRecapButton = document.getElementById("copy-demo-recap-button");
         const downloadDemoRecapButton = document.getElementById("download-demo-recap-button");
         const deletePaperButton = document.getElementById("delete-paper-button");
@@ -1040,6 +1042,7 @@ WEB_UI_HTML = dedent(
           downloadBriefButton.disabled = disabled;
           copyActivityButton.disabled = disabled;
           downloadActivityButton.disabled = disabled;
+          clearActivityButton.disabled = disabled;
           copyDemoRecapButton.disabled = disabled;
           downloadDemoRecapButton.disabled = disabled;
           deletePaperButton.disabled = disabled;
@@ -1197,6 +1200,40 @@ WEB_UI_HTML = dedent(
             await refreshPapers();
             const deletedArtifacts = (payload.deleted_artifacts || []).length;
             setStatus(briefStatus, `Deleted ${paperLabel}${deletedArtifacts ? ` and removed ${deletedArtifacts} artifact(s)` : ""}.`, "success");
+          } catch (error) {
+            setStatus(briefStatus, error.message, "error");
+          } finally {
+            setPaperActionState(false);
+          }
+        }
+
+        async function handleClearPaperActivity() {
+          const paperId = paperSelect.value;
+          if (!paperId) {
+            setStatus(briefStatus, "Select a paper first.", "error");
+            return;
+          }
+
+          const paper = paperRecords.find((item) => item.paper_id === paperId);
+          const paperLabel = paper && (paper.title || paper.original_filename || paper.paper_id) || paperId;
+          const confirmed = window.confirm(`Clear saved question history for ${paperLabel}? This keeps the paper but removes recent activity for demo reset.`);
+          if (!confirmed) {
+            return;
+          }
+
+          setPaperActionState(true);
+          setStatus(briefStatus, "Clearing question history...", "muted");
+
+          try {
+            const response = await fetch(`/papers/${paperId}/activity`, { method: "DELETE" });
+            const payload = await response.json();
+            if (!response.ok) {
+              throw new Error(payload.detail || "Failed to clear paper activity");
+            }
+
+            await updatePaperDetails(paperId);
+            const deletedEvents = Number(payload.deleted_events || 0);
+            setStatus(briefStatus, `Cleared ${deletedEvents} saved question${deletedEvents === 1 ? "" : "s"} for ${paperLabel}.`, "success");
           } catch (error) {
             setStatus(briefStatus, error.message, "error");
           } finally {
@@ -1442,6 +1479,10 @@ WEB_UI_HTML = dedent(
 
         downloadActivityButton.addEventListener("click", async () => {
           await handleActivityTranscriptAction("download");
+        });
+
+        clearActivityButton.addEventListener("click", async () => {
+          await handleClearPaperActivity();
         });
 
         copyDemoRecapButton.addEventListener("click", async () => {
