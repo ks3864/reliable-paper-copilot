@@ -981,6 +981,51 @@ class PaperRegistryApiTests(unittest.TestCase):
             self.assertEqual(payload["items"][0]["lexical_weight"], 0.8)
             self.assertEqual(payload["items"][0]["rrf_k"], 50)
 
+    def test_papers_summary_route_returns_aggregate_library_stats(self):
+        with tempfile.TemporaryDirectory() as tmpdir:
+            tmp_path = Path(tmpdir)
+            registry = PaperRegistry(tmp_path / "papers" / "registry.json")
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-summary-1",
+                    "title": "Earlier Paper",
+                    "status": "processing",
+                    "num_chunks": 4,
+                    "page_count": 6,
+                    "file_size_bytes": 2048,
+                    "created_at": "2026-04-22T20:16:00Z",
+                    "operator_ingestion_notes": [],
+                }
+            )
+            registry.upsert_paper(
+                {
+                    "paper_id": "paper-summary-2",
+                    "title": "Latest Paper",
+                    "status": "ready",
+                    "num_chunks": 7,
+                    "page_count": 9,
+                    "file_size_bytes": 4096,
+                    "created_at": "2026-04-23T20:16:00Z",
+                    "operator_ingestion_notes": ["Use for the main demo"],
+                }
+            )
+
+            with patch.object(api_main, "PAPER_REGISTRY", registry), patch.object(api_main, "PAPERS", {}):
+                client = TestClient(api_main.app)
+                response = client.get("/papers/summary")
+
+            self.assertEqual(response.status_code, 200)
+            payload = response.json()
+            self.assertEqual(payload["total_papers"], 2)
+            self.assertEqual(payload["ready_papers"], 1)
+            self.assertEqual(payload["papers_with_operator_notes"], 1)
+            self.assertEqual(payload["total_pages"], 15)
+            self.assertEqual(payload["total_chunks"], 11)
+            self.assertEqual(payload["total_file_size_bytes"], 6144)
+            self.assertEqual(payload["latest_paper_id"], "paper-summary-2")
+            self.assertEqual(payload["latest_paper_title"], "Latest Paper")
+            self.assertEqual(payload["latest_created_at"], "2026-04-23T20:16:00Z")
+
     def test_activity_export_route_returns_markdown_transcript(self):
         with tempfile.TemporaryDirectory() as tmpdir:
             tmp_path = Path(tmpdir)

@@ -428,6 +428,13 @@ WEB_UI_HTML = dedent(
               <div id="paper-picker-meta" class="paper-picker-meta">No papers loaded yet.</div>
             </div>
             <section class="metadata-editor">
+              <h3>Paper library snapshot</h3>
+              <p id="paper-library-meta" class="muted">Loading library summary...</p>
+              <div id="paper-library-summary" class="detail-grid">
+                <section class="detail-card"><h4>Library summary</h4><p class="muted">Loading library summary...</p></section>
+              </div>
+            </section>
+            <section class="metadata-editor">
               <h3>Demo question presets</h3>
               <p class="muted">Load a packaged sample question into the ask box for faster live demos.</p>
               <div class="control-grid">
@@ -513,6 +520,8 @@ WEB_UI_HTML = dedent(
         const paperSelect = document.getElementById("paper-id");
         const paperSearchInput = document.getElementById("paper-search");
         const paperPickerMeta = document.getElementById("paper-picker-meta");
+        const paperLibraryMeta = document.getElementById("paper-library-meta");
+        const paperLibrarySummary = document.getElementById("paper-library-summary");
         const questionPresetSelect = document.getElementById("question-preset");
         const loadQuestionPresetButton = document.getElementById("load-question-preset-button");
         const questionPresetMeta = document.getElementById("question-preset-meta");
@@ -593,6 +602,33 @@ WEB_UI_HTML = dedent(
             return `${(bytes / 1024).toFixed(1)} KB`;
           }
           return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+        }
+
+        function renderPaperLibrarySummary(summary) {
+          const totalPapers = Number(summary && summary.total_papers || 0);
+          if (!totalPapers) {
+            paperLibraryMeta.textContent = "No papers uploaded yet.";
+            paperLibrarySummary.innerHTML = renderDetailCard("Library summary", '<p class="muted">Upload a paper to populate the demo library snapshot.</p>');
+            return;
+          }
+
+          const latestPaperLabel = summary.latest_paper_title || summary.latest_paper_id || "Unknown";
+          paperLibraryMeta.textContent = `${totalPapers} paper${totalPapers === 1 ? "" : "s"} tracked across the local demo registry.`;
+          paperLibrarySummary.innerHTML = [
+            renderDetailCard("Coverage", `
+              <p><strong>Ready papers:</strong> ${Number(summary.ready_papers || 0)} / ${totalPapers}</p>
+              <p><strong>Papers with operator notes:</strong> ${Number(summary.papers_with_operator_notes || 0)}</p>
+              <p><strong>Total pages:</strong> ${Number(summary.total_pages || 0)}</p>
+            `),
+            renderDetailCard("Artifacts", `
+              <p><strong>Total chunks:</strong> ${Number(summary.total_chunks || 0)}</p>
+              <p><strong>Total file size:</strong> ${formatFileSize(Number(summary.total_file_size_bytes || 0))}</p>
+            `),
+            renderDetailCard("Latest paper", `
+              <p><strong>Paper:</strong> ${escapeHtml(latestPaperLabel)}</p>
+              <p><strong>Created:</strong> ${escapeHtml(formatTimestamp(summary.latest_created_at || ""))}</p>
+            `),
+          ].join("");
         }
 
         function renderDetailCard(title, body) {
@@ -1047,6 +1083,15 @@ WEB_UI_HTML = dedent(
           return payload;
         }
 
+        async function fetchPaperLibrarySummary() {
+          const response = await fetch("/papers/summary");
+          const payload = await response.json();
+          if (!response.ok) {
+            throw new Error(payload.detail || "Failed to load paper library summary");
+          }
+          return payload;
+        }
+
         function setPaperActionState(disabled) {
           copyBriefButton.disabled = disabled;
           downloadBriefButton.disabled = disabled;
@@ -1453,10 +1498,14 @@ WEB_UI_HTML = dedent(
         }
 
         async function refreshPapers(selectedPaperId = "") {
-          const response = await fetch("/papers");
-          const payload = await response.json();
+          const [papersResponse, librarySummary] = await Promise.all([
+            fetch("/papers"),
+            fetchPaperLibrarySummary(),
+          ]);
+          const payload = await papersResponse.json();
           const papers = payload.papers || [];
           paperRecords = papers;
+          renderPaperLibrarySummary(librarySummary);
 
           const preferredPaperId = selectedPaperId || paperSelect.value || initialUiState.paperId || "";
           const visiblePapers = renderPaperOptions(preferredPaperId);

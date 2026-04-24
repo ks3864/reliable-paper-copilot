@@ -144,6 +144,9 @@
 ## Phase 20 — Repo Hygiene
 - [x] Ignore runtime-generated local data artifacts so demo runs do not leave noisy untracked files in git status
 
+## Phase 21 — Demo Library Overview
+- [x] Add aggregate paper-library summary stats in the API and web UI for faster demo setup checks
+
 ## Current priority order
 1. No incomplete items remain in PLANNING.md.
 

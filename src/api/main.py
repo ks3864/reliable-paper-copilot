@@ -167,6 +167,18 @@ class PaperActivityResetResponse(BaseModel):
     remaining_events: int
 
 
+class PaperLibrarySummary(BaseModel):
+    total_papers: int
+    ready_papers: int
+    papers_with_operator_notes: int
+    total_pages: int
+    total_chunks: int
+    total_file_size_bytes: int
+    latest_paper_id: Optional[str] = None
+    latest_paper_title: Optional[str] = None
+    latest_created_at: Optional[str] = None
+
+
 class DemoQuestionPreset(BaseModel):
     id: str
     question: str
@@ -400,6 +412,27 @@ def _build_activity_answer_preview(answer: Optional[str], limit: int = 240) -> O
     if len(cleaned) <= limit:
         return cleaned
     return cleaned[: max(0, limit - 1)].rstrip() + "…"
+
+
+def _build_paper_library_summary(papers: List[Dict[str, Any]]) -> PaperLibrarySummary:
+    sorted_papers = sorted(
+        papers,
+        key=lambda paper: paper.get("created_at") or "",
+        reverse=True,
+    )
+    latest_paper = sorted_papers[0] if sorted_papers else {}
+
+    return PaperLibrarySummary(
+        total_papers=len(papers),
+        ready_papers=sum(1 for paper in papers if paper.get("status") == "ready"),
+        papers_with_operator_notes=sum(1 for paper in papers if paper.get("operator_ingestion_notes")),
+        total_pages=sum(int(paper.get("page_count") or 0) for paper in papers),
+        total_chunks=sum(int(paper.get("num_chunks") or 0) for paper in papers),
+        total_file_size_bytes=sum(int(paper.get("file_size_bytes") or 0) for paper in papers),
+        latest_paper_id=latest_paper.get("paper_id") or None,
+        latest_paper_title=latest_paper.get("title") or None,
+        latest_created_at=latest_paper.get("created_at") or None,
+    )
 
 
 def _build_activity_evidence_labels(chunks: List[Dict[str, Any]], limit: int = 3) -> List[str]:
@@ -1073,6 +1106,13 @@ async def delete_paper(paper_id: str):
 async def list_demo_question_presets():
     """List packaged demo question presets for quickly loading canned paper questions in the UI."""
     return _load_demo_question_sets()
+
+
+@app.get("/papers/summary", response_model=PaperLibrarySummary)
+async def get_paper_library_summary():
+    """Return aggregate paper library stats for demo setup and quick walkthroughs."""
+    papers = PAPER_REGISTRY.list_papers()
+    return _build_paper_library_summary(papers)
 
 
 @app.get("/papers")

@@ -11,6 +11,7 @@ A local-first AI assistant for reading, understanding, and answering questions a
 - **Grounded Generation**: Answer questions with citations from the paper
 - **Answer Quality Scoring**: Optional LLM-as-judge rubric for groundedness, correctness, completeness, and overall quality
 - **Lightweight Web UI**: Browser-based upload and Q&A workflow served directly by the FastAPI app, including dense, lexical, and hybrid retrieval controls, per-chunk score breakdowns, recent per-paper question history, and URL-backed paper or preset selection for demos/debugging
+- **Library Snapshot**: Aggregate paper-library stats for demo setup, including ready-paper counts, page or chunk totals, operator-note coverage, and newest-paper context
 - **Persistent Paper Registry**: Stored paper metadata now includes artifact validation summaries and file size metadata for uploaded PDFs
 
 ## Architecture
@@ -86,6 +87,7 @@ For deployment guidance, including when to keep the app fully local versus when 
 - `DELETE /papers/{paper_id}/activity` - Clear persisted ask history for one paper without deleting its artifacts, useful for resetting live demos
 - `GET /papers/{paper_id}/demo-recap/export` - Export one combined Markdown handoff with the paper brief plus recent activity recap for demos or follow-up notes. The built-in web UI also exposes copy and download actions for this recap.
 - `GET /papers/{paper_id}/metadata/history/export` - Export saved operator metadata edits as Markdown for provenance review or demo handoff notes
+- `GET /papers/summary` - Fetch aggregate library stats for the local paper registry and demo setup overview
 - `GET /health` - Health check
 
 `POST /ask` also accepts optional retrieval controls for experiments and debugging:
