@@ -195,8 +195,13 @@
 - [x] Add direct artifact links to the benchmark run index quick-summary recap lines
   - [x] Sub-task 1: link the newest-run and best-latest-F1 recap entries directly to the latest run directory and artifact set
 
+## Phase 31 — Benchmark Snapshot API for Demo Credibility
+- [x] Add a latest-benchmark snapshot API endpoint for demo credibility and artifact navigation
+  - [x] Sub-task 1: add a server-backed `/benchmark/latest` endpoint that surfaces the newest persisted evaluation metrics, retrieval config, and artifact paths
+  - [ ] Sub-task 2: surface the latest benchmark snapshot in the web UI for live demo credibility checks
+
 ## Current priority order
-1. No open items queued. Pick the next smallest portfolio-visible polish task when work resumes.
+1. Surface the latest benchmark snapshot in the web UI for live demo credibility checks.
 
 ## Notes
 - Work on one item per session

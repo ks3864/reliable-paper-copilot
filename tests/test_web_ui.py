@@ -252,6 +252,7 @@ class WebUITests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn("/papers/{paper_id}/demo-recap/export", response.text)
+        self.assertIn("/benchmark/latest", response.text)
 
 
 if __name__ == "__main__":

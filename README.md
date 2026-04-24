@@ -89,6 +89,7 @@ For deployment guidance, including when to keep the app fully local versus when 
 - `GET /papers/{paper_id}/metadata/history/export` - Export saved operator metadata edits as Markdown for provenance review or demo handoff notes
 - `GET /papers/summary` - Fetch aggregate library stats for the local paper registry and demo setup overview
 - `GET /papers/summary/export` - Export the paper-library snapshot as shareable Markdown for demo setup notes or handoff context
+- `GET /benchmark/latest` - Fetch the newest persisted evaluation snapshot, including core metrics, retrieval config, and artifact paths for demo credibility checks
 - `GET /health` - Health check
 
 `POST /ask` also accepts optional retrieval controls for experiments and debugging:

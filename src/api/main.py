@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse, PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, List, Dict, Any
 import tempfile
 import os
@@ -31,6 +31,8 @@ app = FastAPI(
 PAPERS: Dict[str, Dict[str, Any]] = {}
 REQUEST_LOGGER = RequestLogger()
 PAPER_REGISTRY = PaperRegistry()
+REPO_ROOT = Path(__file__).resolve().parents[2]
+ARTIFACTS_EXPERIMENTS_DIR = REPO_ROOT / "artifacts" / "experiments"
 
 
 class QuestionRequest(BaseModel):
@@ -192,6 +194,19 @@ class DemoQuestionSet(BaseModel):
     questions: List[DemoQuestionPreset]
 
 
+class BenchmarkLatestSnapshot(BaseModel):
+    available: bool
+    message: Optional[str] = None
+    experiment_name: Optional[str] = None
+    pipeline_version: Optional[str] = None
+    run_id: Optional[str] = None
+    generated_at: Optional[str] = None
+    qa_pairs: int = 0
+    metrics: Dict[str, float] = Field(default_factory=dict)
+    retrieval: Dict[str, Any] = Field(default_factory=dict)
+    artifact_paths: Dict[str, str] = Field(default_factory=dict)
+
+
 def _get_paper_or_404(paper_id: str) -> Dict[str, Any]:
     paper = PAPERS.get(paper_id)
     if paper is None:
@@ -218,6 +233,77 @@ def _hydrate_paper_cache(paper: Dict[str, Any]) -> Dict[str, Any]:
 def _load_saved_chunks(chunks_path: str) -> List[Dict[str, Any]]:
     with Path(chunks_path).open("r", encoding="utf-8") as handle:
         return json.load(handle).get("chunks", [])
+
+
+def _find_latest_benchmark_results(output_root: Path) -> Optional[Path]:
+    latest_path: Optional[Path] = None
+    latest_key = ("", "")
+    for results_path in output_root.glob("*/*/*/results.json"):
+        run_dir = results_path.parent
+        try:
+            payload = json.loads(results_path.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            continue
+        candidate_key = (str(payload.get("generated_at") or ""), run_dir.name)
+        if latest_path is None or candidate_key > latest_key:
+            latest_path = results_path
+            latest_key = candidate_key
+    return latest_path
+
+
+def _build_latest_benchmark_snapshot(output_root: Optional[Path] = None) -> BenchmarkLatestSnapshot:
+    output_root = output_root or ARTIFACTS_EXPERIMENTS_DIR
+    latest_results_path = _find_latest_benchmark_results(output_root)
+    if latest_results_path is None:
+        return BenchmarkLatestSnapshot(
+            available=False,
+            message="No persisted benchmark runs found yet.",
+        )
+
+    payload = json.loads(latest_results_path.read_text(encoding="utf-8"))
+    aggregate = payload.get("metrics", {}).get("aggregate", {})
+    retrieval = payload.get("config", {}).get("retrieval", {})
+    run_dir = latest_results_path.parent
+    relative_run_dir = run_dir.relative_to(REPO_ROOT)
+
+    artifact_paths = {
+        "run_dir": relative_run_dir.as_posix(),
+        "results": latest_results_path.relative_to(REPO_ROOT).as_posix(),
+        "index": (output_root / "benchmark_run_index.md").relative_to(REPO_ROOT).as_posix(),
+    }
+    for filename, key in (
+        ("summary.md", "summary"),
+        ("benchmark_report.md", "report_markdown"),
+        ("benchmark_report.html", "report_html"),
+    ):
+        artifact_path = run_dir / filename
+        if artifact_path.exists():
+            artifact_paths[key] = artifact_path.relative_to(REPO_ROOT).as_posix()
+
+    return BenchmarkLatestSnapshot(
+        available=True,
+        experiment_name=payload.get("experiment", {}).get("name") or run_dir.parts[-3],
+        pipeline_version=payload.get("experiment", {}).get("pipeline_version") or run_dir.parts[-2],
+        run_id=payload.get("run_id") or run_dir.name,
+        generated_at=payload.get("generated_at"),
+        qa_pairs=len(payload.get("results", [])),
+        metrics={
+            "exact_match": float(aggregate.get("exact_match", 0.0)),
+            "f1": float(aggregate.get("f1", 0.0)),
+            "retrieval_hit": float(aggregate.get("retrieval_hit", 0.0)),
+            "refusal_accuracy": float(aggregate.get("refusal_accuracy", 0.0)),
+        },
+        retrieval={
+            "mode": retrieval.get("mode", "dense"),
+            "top_k": retrieval.get("top_k", 5),
+            "dense_weight": retrieval.get("dense_weight", 1.0),
+            "lexical_weight": retrieval.get("lexical_weight", 1.0),
+            "rrf_k": retrieval.get("rrf_k", 60),
+            "embedding_model": retrieval.get("embedding_model"),
+            "chunk_profile": payload.get("config", {}).get("chunking", {}).get("profile"),
+        },
+        artifact_paths=artifact_paths,
+    )
 
 
 def _build_paper_brief(paper: Dict[str, Any]) -> PaperBrief:
@@ -1132,6 +1218,12 @@ async def delete_paper(paper_id: str):
 async def list_demo_question_presets():
     """List packaged demo question presets for quickly loading canned paper questions in the UI."""
     return _load_demo_question_sets()
+
+
+@app.get("/benchmark/latest", response_model=BenchmarkLatestSnapshot)
+async def get_latest_benchmark_snapshot():
+    """Return the latest persisted evaluation snapshot for demo credibility and artifact navigation."""
+    return _build_latest_benchmark_snapshot()
 
 
 @app.get("/papers/summary", response_model=PaperLibrarySummary)
