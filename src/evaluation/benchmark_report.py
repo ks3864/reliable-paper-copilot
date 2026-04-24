@@ -53,10 +53,21 @@ def summarize_benchmark_run(
     prompt_cost = prompt_tokens / 1000.0 * float(pricing["prompt_per_1k_tokens"])
     completion_cost = completion_tokens / 1000.0 * float(pricing["completion_per_1k_tokens"])
 
+    retrieval_config = experiment_run.get("config", {}).get("retrieval", {})
+
     return {
         "experiment": experiment_run.get("experiment", {}),
         "run_id": experiment_run.get("run_id"),
         "generated_at": experiment_run.get("generated_at"),
+        "retrieval_config": {
+            "mode": retrieval_config.get("mode", "dense"),
+            "top_k": int(experiment_run.get("config", {}).get("evaluation", {}).get("top_k", 0)),
+            "dense_weight": float(retrieval_config.get("dense_weight", 1.0)),
+            "lexical_weight": float(retrieval_config.get("lexical_weight", 1.0)),
+            "rrf_k": int(retrieval_config.get("rrf_k", 60)),
+            "embedding_model": retrieval_config.get("embedding_model"),
+            "chunk_profile": retrieval_config.get("chunk_profile"),
+        },
         "counts": {
             "qa_pairs": len(results),
             "answerable": int(aggregate.get("answerable_count", 0)),
@@ -110,6 +121,7 @@ def render_benchmark_report_markdown(summary: Dict[str, Any]) -> str:
     cost = summary["cost"]
     counts = summary["counts"]
     slices = summary.get("slices", {})
+    retrieval_config = summary.get("retrieval_config", {})
 
     lines = [
         f"# Benchmark Report: {experiment.get('name', 'unknown')}",
@@ -118,6 +130,16 @@ def render_benchmark_report_markdown(summary: Dict[str, Any]) -> str:
         f"- Run ID: {summary.get('run_id', 'unknown')}",
         f"- Generated at: {summary.get('generated_at', 'unknown')}",
         f"- QA pairs: {counts['qa_pairs']} ({counts['answerable']} answerable, {counts['unanswerable']} unanswerable)",
+        "",
+        "## Retrieval configuration",
+        "",
+        f"- Mode: {retrieval_config.get('mode', 'dense')}",
+        f"- Top-k: {retrieval_config.get('top_k', 0)}",
+        f"- Dense weight: {retrieval_config.get('dense_weight', 1.0):.2f}",
+        f"- Lexical weight: {retrieval_config.get('lexical_weight', 1.0):.2f}",
+        f"- RRF k: {retrieval_config.get('rrf_k', 60)}",
+        f"- Embedding model: {retrieval_config.get('embedding_model') or 'unknown'}",
+        f"- Chunk profile: {retrieval_config.get('chunk_profile') or 'unknown'}",
         "",
         "## Accuracy",
         "",

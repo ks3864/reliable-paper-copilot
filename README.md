@@ -258,7 +258,7 @@ Then turn the latest `results.json` into a shareable summary:
 make benchmark-report REPORT_RESULTS=artifacts/experiments/hybrid-retrieval/results.json
 ```
 
-The generated `benchmark_report.md` and `benchmark_report.html` now include answerability slices plus a refusal confusion summary. Every persisted evaluation run also refreshes `artifacts/experiments/benchmark_run_index.md`, a repo-friendly index that links the latest run directory plus `summary.md`, `benchmark_report.md`, `benchmark_report.html`, and `results.json` for each experiment.
+The generated `benchmark_report.md` and `benchmark_report.html` now include a retrieval-configuration recap, answerability slices, and a refusal confusion summary. Every persisted evaluation run also refreshes `artifacts/experiments/benchmark_run_index.md`, a repo-friendly index that links the latest run directory plus `summary.md`, `benchmark_report.md`, `benchmark_report.html`, and `results.json` for each experiment.
 
 A simple workflow after each `make eval` run is:
 
@@ -306,7 +306,7 @@ The evaluation runner now reports both classic QA metrics and an answer-quality 
 - completeness
 - overall answer quality
 
-Persisted experiment summaries now include an answerability slice table plus a refusal confusion summary, which makes it easier to spot whether the system is over-refusing answerable questions or failing to abstain on unanswerable ones. The evaluation runner also rewrites `artifacts/experiments/benchmark_run_index.md` on each persisted run so you can compare the latest artifact set for every experiment and jump into the full latest run folder without digging through nested timestamped directories.
+Persisted experiment summaries now include a retrieval-configuration recap, an answerability slice table, and a refusal confusion summary, which makes it easier to spot whether the system is over-refusing answerable questions or failing to abstain on unanswerable ones. The evaluation runner also rewrites `artifacts/experiments/benchmark_run_index.md` on each persisted run so you can compare the latest artifact set for every experiment and jump into the full latest run folder without digging through nested timestamped directories.
 
 When reading those reports, treat the answerable slice as the main quality signal for normal QA behavior, and treat the unanswerable slice plus refusal confusion counts as the safety signal for abstention behavior. A strong run should improve answerable quality without buying that gain by increasing missed refusals.
 

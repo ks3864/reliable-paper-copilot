@@ -183,6 +183,10 @@
 ## Phase 27 — Export Action UX Consistency
 - [x] Add preview-aware clipboard and download fallback messaging for paper-scoped Markdown exports in the web UI
 
+## Phase 28 — Benchmark Report Context Polish
+- [x] Add retrieval configuration recap to benchmark report artifacts
+  - [x] Sub-task 1: include retrieval mode, top-k, fusion weights, embedding model, and chunk profile in generated benchmark Markdown/HTML reports
+
 ## Current priority order
 1. No open items queued. Pick the next smallest portfolio-visible polish task when work resumes.
 

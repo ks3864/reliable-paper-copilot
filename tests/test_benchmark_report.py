@@ -65,11 +65,15 @@ def test_benchmark_summary_and_renderers_include_quality_latency_and_cost(tmp_pa
     assert summary["latency"]["avg_ms"] >= 0.0
     assert summary["cost"]["total_tokens"] == len(result["results"]) * 18
     assert summary["cost"]["total_cost"] > 0.0
+    assert summary["retrieval_config"]["mode"] == "dense"
+    assert summary["retrieval_config"]["top_k"] == result["config"]["evaluation"]["top_k"]
     assert "answerable" in summary["slices"]
     assert summary["retrieval"]["refusal_true_negatives"] >= 0
 
     markdown = render_benchmark_report_markdown(summary)
     assert "# Benchmark Report: baseline-eval" in markdown
+    assert "## Retrieval configuration" in markdown
+    assert "- Mode: dense" in markdown
     assert "## Accuracy" in markdown
     assert "## Retrieval" in markdown
     assert "## Answerability slices" in markdown
