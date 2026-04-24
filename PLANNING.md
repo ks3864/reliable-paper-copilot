@@ -153,7 +153,7 @@
   - [x] Sub-task 2: add web UI copy/download actions for the library snapshot export
 
 ## Current priority order
-1. Add a small export-status polish pass for library snapshot actions if preview or clipboard failures need clearer UI messaging.
+1. [x] Add a small export-status polish pass for library snapshot actions if preview or clipboard failures need clearer UI messaging.
 
 ## Notes
 - Work on one item per session

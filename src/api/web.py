@@ -1142,21 +1142,48 @@ WEB_UI_HTML = dedent(
             briefPreview.hidden = false;
 
             if (action === "copy") {
-              await navigator.clipboard.writeText(summaryMarkdown);
-              setStatus(paperLibraryExportStatus, "Library snapshot copied to clipboard.", "success");
+              if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+                setStatus(
+                  paperLibraryExportStatus,
+                  "Clipboard copy is unavailable in this browser. The library snapshot preview is open below, or you can use Download instead.",
+                  "error"
+                );
+                return;
+              }
+
+              try {
+                await navigator.clipboard.writeText(summaryMarkdown);
+                setStatus(paperLibraryExportStatus, "Library snapshot copied to clipboard.", "success");
+              } catch (error) {
+                const detail = error instanceof Error && error.message ? ` ${error.message}` : "";
+                setStatus(
+                  paperLibraryExportStatus,
+                  `Could not copy the library snapshot to the clipboard.${detail} The preview is open below, or you can use Download instead.`,
+                  "error"
+                );
+              }
               return;
             }
 
-            const blob = new Blob([summaryMarkdown], { type: "text/markdown;charset=utf-8" });
-            const url = URL.createObjectURL(blob);
-            const anchor = document.createElement("a");
-            anchor.href = url;
-            anchor.download = "paper-library-snapshot.md";
-            document.body.appendChild(anchor);
-            anchor.click();
-            anchor.remove();
-            URL.revokeObjectURL(url);
-            setStatus(paperLibraryExportStatus, `Downloaded ${anchor.download}.`, "success");
+            try {
+              const blob = new Blob([summaryMarkdown], { type: "text/markdown;charset=utf-8" });
+              const url = URL.createObjectURL(blob);
+              const anchor = document.createElement("a");
+              anchor.href = url;
+              anchor.download = "paper-library-snapshot.md";
+              document.body.appendChild(anchor);
+              anchor.click();
+              anchor.remove();
+              URL.revokeObjectURL(url);
+              setStatus(paperLibraryExportStatus, `Downloaded ${anchor.download}.`, "success");
+            } catch (error) {
+              const detail = error instanceof Error && error.message ? ` ${error.message}` : "";
+              setStatus(
+                paperLibraryExportStatus,
+                `Could not download the library snapshot.${detail} The preview is open below, so you can still copy it manually.`,
+                "error"
+              );
+            }
           } catch (error) {
             setStatus(paperLibraryExportStatus, error.message, "error");
           } finally {
