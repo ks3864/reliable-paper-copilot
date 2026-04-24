@@ -258,13 +258,13 @@ Then turn the latest `results.json` into a shareable summary:
 make benchmark-report REPORT_RESULTS=artifacts/experiments/hybrid-retrieval/results.json
 ```
 
-The generated `benchmark_report.md` and `benchmark_report.html` now include answerability slices plus a refusal confusion summary. Every persisted evaluation run also refreshes `artifacts/experiments/benchmark_run_index.md`, a repo-friendly index that links the latest `summary.md`, `benchmark_report.md`, `benchmark_report.html`, and `results.json` for each experiment.
+The generated `benchmark_report.md` and `benchmark_report.html` now include answerability slices plus a refusal confusion summary. Every persisted evaluation run also refreshes `artifacts/experiments/benchmark_run_index.md`, a repo-friendly index that links the latest run directory plus `summary.md`, `benchmark_report.md`, `benchmark_report.html`, and `results.json` for each experiment.
 
 A simple workflow after each `make eval` run is:
 
 1. Open `artifacts/experiments/benchmark_run_index.md` from the repo root to see the newest run per experiment.
 2. Scan the table columns for generated time, QA count, exact match, F1, retrieval hit rate, and refusal accuracy.
-3. Follow the linked report artifacts when one experiment looks better or needs investigation.
+3. Use the `run-dir` link when you want the full timestamped artifact folder, or jump straight to the linked reports when one experiment looks better or needs investigation.
 
 The generated `benchmark_report.md` and `benchmark_report.html` are still the best detailed readout for one run. A quick way to read them:
 
@@ -306,7 +306,7 @@ The evaluation runner now reports both classic QA metrics and an answer-quality 
 - completeness
 - overall answer quality
 
-Persisted experiment summaries now include an answerability slice table plus a refusal confusion summary, which makes it easier to spot whether the system is over-refusing answerable questions or failing to abstain on unanswerable ones. The evaluation runner also rewrites `artifacts/experiments/benchmark_run_index.md` on each persisted run so you can compare the latest artifact set for every experiment without digging through nested timestamped directories.
+Persisted experiment summaries now include an answerability slice table plus a refusal confusion summary, which makes it easier to spot whether the system is over-refusing answerable questions or failing to abstain on unanswerable ones. The evaluation runner also rewrites `artifacts/experiments/benchmark_run_index.md` on each persisted run so you can compare the latest artifact set for every experiment and jump into the full latest run folder without digging through nested timestamped directories.
 
 When reading those reports, treat the answerable slice as the main quality signal for normal QA behavior, and treat the unanswerable slice plus refusal confusion counts as the safety signal for abstention behavior. A strong run should improve answerable quality without buying that gain by increasing missed refusals.
 

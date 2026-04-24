@@ -150,6 +150,7 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
     assert f"{aggregate['f1']:.2%}" in index_text
     assert f"{aggregate['retrieval_hit']:.2%}" in index_text
     assert f"{aggregate['refusal_accuracy']:.2%}" in index_text
+    assert "[run-dir](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
     assert "[report-md](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
     assert "[report-html](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
 

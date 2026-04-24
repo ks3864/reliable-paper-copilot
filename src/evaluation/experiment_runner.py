@@ -125,7 +125,7 @@ def _build_benchmark_run_index(output_root: Path) -> str:
             aggregate = results_payload.get("metrics", {}).get("aggregate", {})
         qa_pairs = len(results_payload.get("results", []))
         generated_at = results_payload.get("generated_at", "-")
-        links = []
+        links = [f"[run-dir]({run_dir.relative_to(output_root).as_posix()}/)"]
         for filename, label in (
             ("summary.md", "summary"),
             ("benchmark_report.md", "report-md"),

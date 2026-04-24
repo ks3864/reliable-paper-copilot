@@ -176,6 +176,13 @@
 1. [x] Add a small README polish pass so the benchmark run index workflow is easier to discover from the repo root.
    - [x] Sub-task 1: document where `benchmark_run_index.md` is generated and how to use it after evaluation runs.
 
+## Phase 26 — Benchmark Artifact Navigation
+- [x] Add direct latest-run folder links to the benchmark run index for faster artifact inspection from the repo root
+  - [x] Sub-task 1: include a `run-dir` link alongside per-file artifact links in `benchmark_run_index.md`
+
+## Current priority order
+1. No open items queued. Pick the next smallest portfolio-visible polish task when work resumes.
+
 ## Notes
 - Work on one item per session
 - Commit after each item with a descriptive message
