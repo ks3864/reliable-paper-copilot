@@ -429,6 +429,12 @@ WEB_UI_HTML = dedent(
             </div>
             <section class="metadata-editor">
               <h3>Paper library snapshot</h3>
+              <p class="muted">Copy or download the aggregate paper-library snapshot as Markdown for demo setup notes or handoff context.</p>
+              <div class="actions-row">
+                <button id="copy-library-summary-button" class="button-secondary" type="button">Copy library snapshot</button>
+                <button id="download-library-summary-button" class="button-secondary" type="button">Download library snapshot</button>
+                <span id="paper-library-export-status" class="status muted"></span>
+              </div>
               <p id="paper-library-meta" class="muted">Loading library summary...</p>
               <div id="paper-library-summary" class="detail-grid">
                 <section class="detail-card"><h4>Library summary</h4><p class="muted">Loading library summary...</p></section>
@@ -522,6 +528,9 @@ WEB_UI_HTML = dedent(
         const paperPickerMeta = document.getElementById("paper-picker-meta");
         const paperLibraryMeta = document.getElementById("paper-library-meta");
         const paperLibrarySummary = document.getElementById("paper-library-summary");
+        const copyLibrarySummaryButton = document.getElementById("copy-library-summary-button");
+        const downloadLibrarySummaryButton = document.getElementById("download-library-summary-button");
+        const paperLibraryExportStatus = document.getElementById("paper-library-export-status");
         const questionPresetSelect = document.getElementById("question-preset");
         const loadQuestionPresetButton = document.getElementById("load-question-preset-button");
         const questionPresetMeta = document.getElementById("question-preset-meta");
@@ -1092,6 +1101,23 @@ WEB_UI_HTML = dedent(
           return payload;
         }
 
+        async function fetchPaperLibrarySummaryMarkdown() {
+          const response = await fetch("/papers/summary/export");
+          const payload = await response.text();
+          if (!response.ok) {
+            try {
+              const parsed = JSON.parse(payload);
+              throw new Error(parsed.detail || "Failed to export paper library snapshot");
+            } catch (error) {
+              if (error instanceof SyntaxError) {
+                throw new Error(payload || "Failed to export paper library snapshot");
+              }
+              throw error;
+            }
+          }
+          return payload;
+        }
+
         function setPaperActionState(disabled) {
           copyBriefButton.disabled = disabled;
           downloadBriefButton.disabled = disabled;
@@ -1103,6 +1129,40 @@ WEB_UI_HTML = dedent(
           copyMetadataHistoryButton.disabled = disabled;
           downloadMetadataHistoryButton.disabled = disabled;
           deletePaperButton.disabled = disabled;
+        }
+
+        async function handleLibrarySummaryAction(action) {
+          copyLibrarySummaryButton.disabled = true;
+          downloadLibrarySummaryButton.disabled = true;
+          setStatus(paperLibraryExportStatus, "Preparing library snapshot...", "muted");
+
+          try {
+            const summaryMarkdown = await fetchPaperLibrarySummaryMarkdown();
+            briefPreview.textContent = summaryMarkdown;
+            briefPreview.hidden = false;
+
+            if (action === "copy") {
+              await navigator.clipboard.writeText(summaryMarkdown);
+              setStatus(paperLibraryExportStatus, "Library snapshot copied to clipboard.", "success");
+              return;
+            }
+
+            const blob = new Blob([summaryMarkdown], { type: "text/markdown;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = "paper-library-snapshot.md";
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setStatus(paperLibraryExportStatus, `Downloaded ${anchor.download}.`, "success");
+          } catch (error) {
+            setStatus(paperLibraryExportStatus, error.message, "error");
+          } finally {
+            copyLibrarySummaryButton.disabled = false;
+            downloadLibrarySummaryButton.disabled = false;
+          }
         }
 
         async function handleBriefAction(action) {
@@ -1582,6 +1642,14 @@ WEB_UI_HTML = dedent(
             return;
           }
           reuseRecentQuestion(button.dataset.question || "");
+        });
+
+        copyLibrarySummaryButton.addEventListener("click", async () => {
+          await handleLibrarySummaryAction("copy");
+        });
+
+        downloadLibrarySummaryButton.addEventListener("click", async () => {
+          await handleLibrarySummaryAction("download");
         });
 
         copyBriefButton.addEventListener("click", async () => {
