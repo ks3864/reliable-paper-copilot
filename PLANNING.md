@@ -137,6 +137,10 @@
 - [x] Add operator metadata history Markdown export for provenance review and demo handoff
   - [x] Sub-task 1: add a server-backed `/papers/{paper_id}/metadata/history/export` endpoint that exports recent operator metadata edits as Markdown
 
+## Phase 19 — Metadata Export UX
+- [x] Add operator metadata history copy/download actions in the web UI
+  - [x] Sub-task 1: wire the existing `/papers/{paper_id}/metadata/history/export` endpoint into UI buttons and preview behavior for live provenance handoff
+
 ## Current priority order
 1. No incomplete items remain in PLANNING.md.
 

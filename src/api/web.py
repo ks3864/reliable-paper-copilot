@@ -410,6 +410,14 @@ WEB_UI_HTML = dedent(
                   <span id="metadata-status" class="status muted"></span>
                 </div>
               </section>
+              <section class="metadata-editor">
+                <h3>Export operator metadata history</h3>
+                <p class="muted">Copy or download the recent saved operator metadata edits as Markdown for provenance review or demo handoff.</p>
+                <div class="actions-row">
+                  <button id="copy-metadata-history-button" class="button-secondary" type="button">Copy metadata history</button>
+                  <button id="download-metadata-history-button" class="button-secondary" type="button">Download metadata history</button>
+                </div>
+              </section>
             </div>
             <div class="paper-picker">
               <label for="paper-id">Paper</label>
@@ -527,6 +535,8 @@ WEB_UI_HTML = dedent(
         const clearActivityButton = document.getElementById("clear-activity-button");
         const copyDemoRecapButton = document.getElementById("copy-demo-recap-button");
         const downloadDemoRecapButton = document.getElementById("download-demo-recap-button");
+        const copyMetadataHistoryButton = document.getElementById("copy-metadata-history-button");
+        const downloadMetadataHistoryButton = document.getElementById("download-metadata-history-button");
         const deletePaperButton = document.getElementById("delete-paper-button");
         const briefStatus = document.getElementById("brief-status");
         const briefPreview = document.getElementById("brief-preview");
@@ -1045,6 +1055,8 @@ WEB_UI_HTML = dedent(
           clearActivityButton.disabled = disabled;
           copyDemoRecapButton.disabled = disabled;
           downloadDemoRecapButton.disabled = disabled;
+          copyMetadataHistoryButton.disabled = disabled;
+          downloadMetadataHistoryButton.disabled = disabled;
           deletePaperButton.disabled = disabled;
         }
 
@@ -1152,6 +1164,47 @@ WEB_UI_HTML = dedent(
             }
 
             const blob = new Blob([recapMarkdown], { type: "text/markdown;charset=utf-8" });
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = downloadName;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            URL.revokeObjectURL(url);
+            setStatus(briefStatus, `Downloaded ${anchor.download}.`, "success");
+          } catch (error) {
+            setStatus(briefStatus, error.message, "error");
+          } finally {
+            setPaperActionState(false);
+          }
+        }
+
+        async function handleMetadataHistoryAction(action) {
+          const paperId = paperSelect.value;
+          if (!paperId) {
+            setStatus(briefStatus, "Select a paper first.", "error");
+            return;
+          }
+
+          setPaperActionState(true);
+          setStatus(briefStatus, "Preparing operator metadata history...", "muted");
+
+          try {
+            const metadataHistoryMarkdown = await fetchPaperMetadataHistoryMarkdown(paperId);
+            briefPreview.textContent = metadataHistoryMarkdown;
+            briefPreview.hidden = false;
+
+            const paper = paperRecords.find((item) => item.paper_id === paperId) || {};
+            const downloadName = `${paper.paper_id || paperId}-metadata-history.md`;
+
+            if (action === "copy") {
+              await navigator.clipboard.writeText(metadataHistoryMarkdown);
+              setStatus(briefStatus, "Operator metadata history copied to clipboard.", "success");
+              return;
+            }
+
+            const blob = new Blob([metadataHistoryMarkdown], { type: "text/markdown;charset=utf-8" });
             const url = URL.createObjectURL(blob);
             const anchor = document.createElement("a");
             anchor.href = url;
@@ -1280,6 +1333,23 @@ WEB_UI_HTML = dedent(
             } catch (error) {
               if (error instanceof SyntaxError) {
                 throw new Error(payload || "Failed to export paper demo recap");
+              }
+              throw error;
+            }
+          }
+          return payload;
+        }
+
+        async function fetchPaperMetadataHistoryMarkdown(paperId) {
+          const response = await fetch(`/papers/${paperId}/metadata/history/export?limit=10`);
+          const payload = await response.text();
+          if (!response.ok) {
+            try {
+              const parsed = JSON.parse(payload);
+              throw new Error(parsed.detail || "Failed to export operator metadata history");
+            } catch (error) {
+              if (error instanceof SyntaxError) {
+                throw new Error(payload || "Failed to export operator metadata history");
               }
               throw error;
             }
@@ -1491,6 +1561,14 @@ WEB_UI_HTML = dedent(
 
         downloadDemoRecapButton.addEventListener("click", async () => {
           await handleDemoRecapAction("download");
+        });
+
+        copyMetadataHistoryButton.addEventListener("click", async () => {
+          await handleMetadataHistoryAction("copy");
+        });
+
+        downloadMetadataHistoryButton.addEventListener("click", async () => {
+          await handleMetadataHistoryAction("download");
         });
 
         deletePaperButton.addEventListener("click", async () => {
