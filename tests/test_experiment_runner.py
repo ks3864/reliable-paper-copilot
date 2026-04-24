@@ -127,6 +127,8 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
     results_payload = json.loads((output_dir / "results.json").read_text(encoding="utf-8"))
     assert results_payload["experiment"]["name"] == "baseline-eval"
     assert results_payload["run_id"] == result["run_id"]
+    expected_qa_pairs = len(results_payload["results"])
+    aggregate = results_payload["metrics"]["aggregate"]
 
     summary_text = (output_dir / "summary.md").read_text(encoding="utf-8")
     assert "# Experiment Summary: baseline-eval" in summary_text
@@ -139,9 +141,15 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
 
     index_text = (tmp_path / "benchmark_run_index.md").read_text(encoding="utf-8")
     assert "# Benchmark Run Index" in index_text
-    assert "| Experiment | Pipeline Version | Latest Run ID | Artifacts |" in index_text
+    assert "| Experiment | Pipeline Version | Latest Run ID | Generated At | QA Pairs | Exact Match | F1 | Retrieval Hit | Refusal Accuracy | Artifacts |" in index_text
     assert "baseline-eval" in index_text
     assert "phase3-pipeline-versioning-v1" in index_text
+    assert result["generated_at"] in index_text
+    assert f"| {expected_qa_pairs} |" in index_text
+    assert f"{aggregate['exact_match']:.2%}" in index_text
+    assert f"{aggregate['f1']:.2%}" in index_text
+    assert f"{aggregate['retrieval_hit']:.2%}" in index_text
+    assert f"{aggregate['refusal_accuracy']:.2%}" in index_text
     assert "[report-md](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
     assert "[report-html](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
 

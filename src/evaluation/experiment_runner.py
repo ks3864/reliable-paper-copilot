@@ -109,14 +109,22 @@ def _build_benchmark_run_index(output_root: Path) -> str:
         "",
         "Latest benchmark artifacts per experiment.",
         "",
-        "| Experiment | Pipeline Version | Latest Run ID | Artifacts |",
-        "| --- | --- | --- | --- |",
+        "| Experiment | Pipeline Version | Latest Run ID | Generated At | QA Pairs | Exact Match | F1 | Retrieval Hit | Refusal Accuracy | Artifacts |",
+        "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
 
     for run_dir in _collect_latest_run_dirs(output_root):
         experiment_name = run_dir.parts[-3]
         pipeline_version = run_dir.parts[-2]
         run_id = run_dir.parts[-1]
+        results_payload = {}
+        aggregate = {}
+        results_path = run_dir / "results.json"
+        if results_path.exists():
+            results_payload = json.loads(results_path.read_text(encoding="utf-8"))
+            aggregate = results_payload.get("metrics", {}).get("aggregate", {})
+        qa_pairs = len(results_payload.get("results", []))
+        generated_at = results_payload.get("generated_at", "-")
         links = []
         for filename, label in (
             ("summary.md", "summary"),
@@ -129,11 +137,22 @@ def _build_benchmark_run_index(output_root: Path) -> str:
                 relative_path = artifact_path.relative_to(output_root)
                 links.append(f"[{label}]({relative_path.as_posix()})")
         lines.append(
-            f"| {experiment_name} | {pipeline_version} | `{run_id}` | {' / '.join(links) if links else '-'} |"
+            "| {experiment_name} | {pipeline_version} | `{run_id}` | {generated_at} | {qa_pairs} | {exact_match:.2%} | {f1:.2%} | {retrieval_hit:.2%} | {refusal_accuracy:.2%} | {links} |".format(
+                experiment_name=experiment_name,
+                pipeline_version=pipeline_version,
+                run_id=run_id,
+                generated_at=generated_at,
+                qa_pairs=qa_pairs,
+                exact_match=float(aggregate.get("exact_match", 0.0)),
+                f1=float(aggregate.get("f1", 0.0)),
+                retrieval_hit=float(aggregate.get("retrieval_hit", 0.0)),
+                refusal_accuracy=float(aggregate.get("refusal_accuracy", 0.0)),
+                links=" / ".join(links) if links else "-",
+            )
         )
 
     if len(lines) == 6:
-        lines.append("| - | - | - | No benchmark runs found yet. |")
+        lines.append("| - | - | - | - | - | - | - | - | - | No benchmark runs found yet. |")
 
     return "\n".join(lines) + "\n"
 

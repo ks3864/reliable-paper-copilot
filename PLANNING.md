@@ -168,6 +168,14 @@
 1. [x] Add a small benchmark artifact UX polish pass so report exports are easier to inspect from the repo and demo flow.
    - [x] Sub-task 1: add a compact benchmark run index Markdown artifact that links the latest generated report outputs per experiment.
 
+## Phase 25 — Benchmark Index Scanability
+- [x] Add key summary metrics to the benchmark run index artifact so the latest experiment quality is scannable without opening each report
+  - [x] Sub-task 1: include generated-at, QA-pair count, exact match, F1, retrieval hit, and refusal accuracy columns in `benchmark_run_index.md`
+
+## Current priority order
+1. Add a small README polish pass so the benchmark run index workflow is easier to discover from the repo root.
+   - [ ] Sub-task 1: document where `benchmark_run_index.md` is generated and how to use it after evaluation runs.
+
 ## Notes
 - Work on one item per session
 - Commit after each item with a descriptive message
