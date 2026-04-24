@@ -486,7 +486,10 @@ WEB_UI_HTML = dedent(
                 <input id="rrf-k" type="number" min="1" step="1" value="60" />
               </div>
             </div>
-            <div id="retrieval-preset-status" class="status muted"></div>
+            <div class="actions-row">
+              <button id="reset-retrieval-preset-button" class="button-secondary" type="button">Reset retrieval preset</button>
+              <span id="retrieval-preset-status" class="status muted"></span>
+            </div>
             <button id="ask-button" type="submit">Ask</button>
             <div id="ask-status" class="status muted"></div>
           </form>
@@ -573,6 +576,14 @@ WEB_UI_HTML = dedent(
         const lexicalWeightInput = document.getElementById("lexical-weight");
         const rrfKInput = document.getElementById("rrf-k");
         const retrievalPresetStatus = document.getElementById("retrieval-preset-status");
+        const resetRetrievalPresetButton = document.getElementById("reset-retrieval-preset-button");
+        const DEFAULT_RETRIEVAL_UI_STATE = {
+          retrievalMode: "dense",
+          topK: 5,
+          denseWeight: 1.0,
+          lexicalWeight: 1.0,
+          rrfK: 60,
+        };
         const initialUiState = getInitialUiState();
         let paperRecords = [];
         let demoQuestionPresets = [];
@@ -595,31 +606,31 @@ WEB_UI_HTML = dedent(
         function normalizeRetrievalUiState(rawState = {}) {
           const allowedRetrievalModes = new Set(["dense", "lexical", "hybrid"]);
           const issues = [];
-          const retrievalMode = allowedRetrievalModes.has(rawState.retrievalMode) ? rawState.retrievalMode : "dense";
+          const retrievalMode = allowedRetrievalModes.has(rawState.retrievalMode) ? rawState.retrievalMode : DEFAULT_RETRIEVAL_UI_STATE.retrievalMode;
           if ((rawState.retrievalMode || "") && rawState.retrievalMode !== retrievalMode) {
             issues.push(`retrieval_mode=${rawState.retrievalMode} → dense`);
           }
 
-          const rawTopK = parseIntegerParam(rawState.topK, 5);
+          const rawTopK = parseIntegerParam(rawState.topK, DEFAULT_RETRIEVAL_UI_STATE.topK);
           const topK = Math.min(10, Math.max(1, rawTopK));
           if (rawTopK !== topK) {
             issues.push(`top_k=${rawState.topK} → ${topK}`);
           }
 
-          const rawDenseWeight = parseFloatParam(rawState.denseWeight, 1.0);
-          const denseWeight = rawDenseWeight >= 0 ? rawDenseWeight : 1.0;
+          const rawDenseWeight = parseFloatParam(rawState.denseWeight, DEFAULT_RETRIEVAL_UI_STATE.denseWeight);
+          const denseWeight = rawDenseWeight >= 0 ? rawDenseWeight : DEFAULT_RETRIEVAL_UI_STATE.denseWeight;
           if (rawDenseWeight !== denseWeight) {
             issues.push(`dense_weight=${rawState.denseWeight} → 1.0`);
           }
 
-          const rawLexicalWeight = parseFloatParam(rawState.lexicalWeight, 1.0);
-          const lexicalWeight = rawLexicalWeight >= 0 ? rawLexicalWeight : 1.0;
+          const rawLexicalWeight = parseFloatParam(rawState.lexicalWeight, DEFAULT_RETRIEVAL_UI_STATE.lexicalWeight);
+          const lexicalWeight = rawLexicalWeight >= 0 ? rawLexicalWeight : DEFAULT_RETRIEVAL_UI_STATE.lexicalWeight;
           if (rawLexicalWeight !== lexicalWeight) {
             issues.push(`lexical_weight=${rawState.lexicalWeight} → 1.0`);
           }
 
-          const rawRrfK = parseIntegerParam(rawState.rrfK, 60);
-          const rrfK = rawRrfK >= 1 ? rawRrfK : 60;
+          const rawRrfK = parseIntegerParam(rawState.rrfK, DEFAULT_RETRIEVAL_UI_STATE.rrfK);
+          const rrfK = rawRrfK >= 1 ? rawRrfK : DEFAULT_RETRIEVAL_UI_STATE.rrfK;
           if (rawRrfK !== rrfK) {
             issues.push(`rrf_k=${rawState.rrfK} → ${rrfK}`);
           }
@@ -641,7 +652,7 @@ WEB_UI_HTML = dedent(
           return normalizeRetrievalUiState({
             paperId: params.get("paper_id") || "",
             questionPreset: params.get("question_preset") || "",
-            retrievalMode: params.get("retrieval_mode") || "dense",
+            retrievalMode: params.get("retrieval_mode") || DEFAULT_RETRIEVAL_UI_STATE.retrievalMode,
             topK: params.get("top_k"),
             denseWeight: params.get("dense_weight"),
             lexicalWeight: params.get("lexical_weight"),
@@ -715,11 +726,11 @@ WEB_UI_HTML = dedent(
         }
 
         function applyRetrievalUiState(state) {
-          retrievalModeInput.value = state.retrievalMode || "dense";
-          topKInput.value = String(state.topK || 5);
-          denseWeightInput.value = String(state.denseWeight || 1.0);
-          lexicalWeightInput.value = String(state.lexicalWeight || 1.0);
-          rrfKInput.value = String(state.rrfK || 60);
+          retrievalModeInput.value = state.retrievalMode || DEFAULT_RETRIEVAL_UI_STATE.retrievalMode;
+          topKInput.value = String(state.topK || DEFAULT_RETRIEVAL_UI_STATE.topK);
+          denseWeightInput.value = String(state.denseWeight || DEFAULT_RETRIEVAL_UI_STATE.denseWeight);
+          lexicalWeightInput.value = String(state.lexicalWeight || DEFAULT_RETRIEVAL_UI_STATE.lexicalWeight);
+          rrfKInput.value = String(state.rrfK || DEFAULT_RETRIEVAL_UI_STATE.rrfK);
         }
 
         function renderRetrievalPresetStatus(state) {
@@ -1786,6 +1797,18 @@ WEB_UI_HTML = dedent(
 
         loadQuestionPresetButton.addEventListener("click", () => {
           loadSelectedQuestionPreset();
+        });
+
+        resetRetrievalPresetButton.addEventListener("click", () => {
+          applyRetrievalUiState(DEFAULT_RETRIEVAL_UI_STATE);
+          setStatus(retrievalPresetStatus, "Reset retrieval controls to defaults and cleared shared URL preset values.", "success");
+          syncUrlState({
+            retrievalMode: DEFAULT_RETRIEVAL_UI_STATE.retrievalMode,
+            topK: DEFAULT_RETRIEVAL_UI_STATE.topK,
+            denseWeight: DEFAULT_RETRIEVAL_UI_STATE.denseWeight,
+            lexicalWeight: DEFAULT_RETRIEVAL_UI_STATE.lexicalWeight,
+            rrfK: DEFAULT_RETRIEVAL_UI_STATE.rrfK,
+          });
         });
 
         paperSearchInput.addEventListener("input", async () => {
