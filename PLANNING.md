@@ -187,6 +187,10 @@
 - [x] Add retrieval configuration recap to benchmark report artifacts
   - [x] Sub-task 1: include retrieval mode, top-k, fusion weights, embedding model, and chunk profile in generated benchmark Markdown/HTML reports
 
+## Phase 29 — Benchmark Index Summary Scanability
+- [x] Add a compact quick-summary block to the benchmark run index so the newest run and best latest F1 are visible before opening individual artifacts
+  - [x] Sub-task 1: surface indexed experiment count plus newest-run and best-latest-F1 summary lines at the top of `benchmark_run_index.md`
+
 ## Current priority order
 1. No open items queued. Pick the next smallest portfolio-visible polish task when work resumes.
 

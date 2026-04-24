@@ -141,6 +141,10 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
 
     index_text = (tmp_path / "benchmark_run_index.md").read_text(encoding="utf-8")
     assert "# Benchmark Run Index" in index_text
+    assert "## Quick Summary" in index_text
+    assert "- Experiments indexed: 1" in index_text
+    assert f"- Newest generated run: baseline-eval / phase3-pipeline-versioning-v1 at {result['generated_at']} (`{result['run_id']}`)" in index_text
+    assert f"- Best latest F1: baseline-eval / phase3-pipeline-versioning-v1 with {aggregate['f1']:.2%} (`{result['run_id']}`)" in index_text
     assert "| Experiment | Pipeline Version | Latest Run ID | Generated At | QA Pairs | Exact Match | F1 | Retrieval Hit | Refusal Accuracy | Artifacts |" in index_text
     assert "baseline-eval" in index_text
     assert "phase3-pipeline-versioning-v1" in index_text

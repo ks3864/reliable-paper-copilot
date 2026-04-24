@@ -109,10 +109,9 @@ def _build_benchmark_run_index(output_root: Path) -> str:
         "",
         "Latest benchmark artifacts per experiment.",
         "",
-        "| Experiment | Pipeline Version | Latest Run ID | Generated At | QA Pairs | Exact Match | F1 | Retrieval Hit | Refusal Accuracy | Artifacts |",
-        "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
     ]
 
+    run_summaries: List[Dict[str, Any]] = []
     for run_dir in _collect_latest_run_dirs(output_root):
         experiment_name = run_dir.parts[-3]
         pipeline_version = run_dir.parts[-2]
@@ -136,22 +135,50 @@ def _build_benchmark_run_index(output_root: Path) -> str:
             if artifact_path.exists():
                 relative_path = artifact_path.relative_to(output_root)
                 links.append(f"[{label}]({relative_path.as_posix()})")
+        run_summaries.append(
+            {
+                "experiment_name": experiment_name,
+                "pipeline_version": pipeline_version,
+                "run_id": run_id,
+                "generated_at": generated_at,
+                "qa_pairs": qa_pairs,
+                "exact_match": float(aggregate.get("exact_match", 0.0)),
+                "f1": float(aggregate.get("f1", 0.0)),
+                "retrieval_hit": float(aggregate.get("retrieval_hit", 0.0)),
+                "refusal_accuracy": float(aggregate.get("refusal_accuracy", 0.0)),
+                "links": " / ".join(links) if links else "-",
+            }
+        )
+
+    if run_summaries:
+        newest_run = max(run_summaries, key=lambda item: (item["generated_at"], item["run_id"]))
+        best_f1_run = max(run_summaries, key=lambda item: (item["f1"], item["generated_at"], item["run_id"]))
+        lines.extend(
+            [
+                "## Quick Summary",
+                "",
+                f"- Experiments indexed: {len(run_summaries)}",
+                f"- Newest generated run: {newest_run['experiment_name']} / {newest_run['pipeline_version']} at {newest_run['generated_at']} (`{newest_run['run_id']}`)",
+                f"- Best latest F1: {best_f1_run['experiment_name']} / {best_f1_run['pipeline_version']} with {best_f1_run['f1']:.2%} (`{best_f1_run['run_id']}`)",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "| Experiment | Pipeline Version | Latest Run ID | Generated At | QA Pairs | Exact Match | F1 | Retrieval Hit | Refusal Accuracy | Artifacts |",
+            "| --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- |",
+        ]
+    )
+
+    for summary in run_summaries:
         lines.append(
             "| {experiment_name} | {pipeline_version} | `{run_id}` | {generated_at} | {qa_pairs} | {exact_match:.2%} | {f1:.2%} | {retrieval_hit:.2%} | {refusal_accuracy:.2%} | {links} |".format(
-                experiment_name=experiment_name,
-                pipeline_version=pipeline_version,
-                run_id=run_id,
-                generated_at=generated_at,
-                qa_pairs=qa_pairs,
-                exact_match=float(aggregate.get("exact_match", 0.0)),
-                f1=float(aggregate.get("f1", 0.0)),
-                retrieval_hit=float(aggregate.get("retrieval_hit", 0.0)),
-                refusal_accuracy=float(aggregate.get("refusal_accuracy", 0.0)),
-                links=" / ".join(links) if links else "-",
+                **summary,
             )
         )
 
-    if len(lines) == 6:
+    if not run_summaries:
         lines.append("| - | - | - | - | - | - | - | - | - | No benchmark runs found yet. |")
 
     return "\n".join(lines) + "\n"
