@@ -1,9 +1,9 @@
 """Tests for retrieval reranking behavior."""
 
 import math
-import sys
 import types
 import unittest
+from unittest.mock import patch
 
 
 class FakeArray:
@@ -108,13 +108,8 @@ class DummyCrossEncoder:
         return [0.0 for _ in pairs]
 
 
-sys.modules.setdefault("numpy", FakeNumpyModule())
-sys.modules.setdefault("faiss", FakeFaissModule())
-sys.modules.setdefault(
-    "sentence_transformers",
-    types.SimpleNamespace(SentenceTransformer=DummySentenceTransformer, CrossEncoder=DummyCrossEncoder),
-)
-
+from src.retrieval import reranker as reranker_module
+from src.retrieval import retriever as retriever_module
 from src.retrieval.reranker import BaseReranker
 from src.retrieval.retriever import Retriever
 
@@ -134,6 +129,21 @@ class KeywordReranker(BaseReranker):
 
 
 class RetrievalRerankingTests(unittest.TestCase):
+    def setUp(self):
+        self.retriever_patcher = patch.multiple(
+            retriever_module,
+            SentenceTransformer=DummySentenceTransformer,
+            faiss=FakeFaissModule(),
+            np=FakeNumpyModule(),
+        )
+        self.reranker_patcher = patch.object(reranker_module, "CrossEncoder", DummyCrossEncoder)
+        self.retriever_patcher.start()
+        self.reranker_patcher.start()
+
+    def tearDown(self):
+        self.retriever_patcher.stop()
+        self.reranker_patcher.stop()
+
     def test_retrieve_reranks_initial_candidates(self):
         retriever = Retriever(reranker=KeywordReranker())
         retriever.build_index(

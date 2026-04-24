@@ -160,10 +160,13 @@
   - [x] Sub-task 1: sync the selected retrieval mode with the web UI URL state and restore it on load
   - [x] Sub-task 2: extend URL-backed state to include advanced retrieval knobs such as top-k and hybrid weights
 
+## Phase 24 — Test Stability
+- [x] Make retrieval reranking tests deterministic across environments with or without local ML dependencies
+  - [x] Sub-task 1: patch retrieval test doubles directly into the reranking test module instead of relying on optional dependency import state
+
 ## Current priority order
-1. [x] Add lightweight validation and reset affordances for shared retrieval URL presets in the web UI.
-   - [x] Sub-task 1: validate shared retrieval URL parameters on load, clean invalid values, and surface a brief UI warning when defaults were restored.
-   - [x] Sub-task 2: add a one-click retrieval preset reset action in the web UI to restore default controls and clear retrieval query params.
+1. Add a small benchmark artifact UX polish pass so report exports are easier to inspect from the repo and demo flow.
+   - [ ] Sub-task 1: add a compact benchmark run index Markdown artifact that links the latest generated report outputs per experiment.
 
 ## Notes
 - Work on one item per session
