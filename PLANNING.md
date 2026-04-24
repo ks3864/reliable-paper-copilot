@@ -173,8 +173,8 @@
   - [x] Sub-task 1: include generated-at, QA-pair count, exact match, F1, retrieval hit, and refusal accuracy columns in `benchmark_run_index.md`
 
 ## Current priority order
-1. Add a small README polish pass so the benchmark run index workflow is easier to discover from the repo root.
-   - [ ] Sub-task 1: document where `benchmark_run_index.md` is generated and how to use it after evaluation runs.
+1. [x] Add a small README polish pass so the benchmark run index workflow is easier to discover from the repo root.
+   - [x] Sub-task 1: document where `benchmark_run_index.md` is generated and how to use it after evaluation runs.
 
 ## Notes
 - Work on one item per session
