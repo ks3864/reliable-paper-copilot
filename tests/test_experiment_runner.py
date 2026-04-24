@@ -143,8 +143,11 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
     assert "# Benchmark Run Index" in index_text
     assert "## Quick Summary" in index_text
     assert "- Experiments indexed: 1" in index_text
-    assert f"- Newest generated run: baseline-eval / phase3-pipeline-versioning-v1 at {result['generated_at']} (`{result['run_id']}`)" in index_text
-    assert f"- Best latest F1: baseline-eval / phase3-pipeline-versioning-v1 with {aggregate['f1']:.2%} (`{result['run_id']}`)" in index_text
+    assert f"- Newest generated run: [baseline-eval / phase3-pipeline-versioning-v1](baseline-eval/phase3-pipeline-versioning-v1/{result['run_id']}/) at {result['generated_at']} (`{result['run_id']}`)" in index_text
+    assert f"- Best latest F1: [baseline-eval / phase3-pipeline-versioning-v1](baseline-eval/phase3-pipeline-versioning-v1/{result['run_id']}/) with {aggregate['f1']:.2%} (`{result['run_id']}`)" in index_text
+    assert "[run-dir](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
+    assert "[report-md](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
+    assert "[report-html](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
     assert "| Experiment | Pipeline Version | Latest Run ID | Generated At | QA Pairs | Exact Match | F1 | Retrieval Hit | Refusal Accuracy | Artifacts |" in index_text
     assert "baseline-eval" in index_text
     assert "phase3-pipeline-versioning-v1" in index_text
@@ -154,9 +157,6 @@ def test_run_experiment_persists_versioned_outputs(tmp_path):
     assert f"{aggregate['f1']:.2%}" in index_text
     assert f"{aggregate['retrieval_hit']:.2%}" in index_text
     assert f"{aggregate['refusal_accuracy']:.2%}" in index_text
-    assert "[run-dir](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
-    assert "[report-md](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
-    assert "[report-html](baseline-eval/phase3-pipeline-versioning-v1/" in index_text
 
 
 def test_benchmark_run_index_keeps_latest_run_per_experiment(tmp_path):

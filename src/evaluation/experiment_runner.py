@@ -147,6 +147,7 @@ def _build_benchmark_run_index(output_root: Path) -> str:
                 "retrieval_hit": float(aggregate.get("retrieval_hit", 0.0)),
                 "refusal_accuracy": float(aggregate.get("refusal_accuracy", 0.0)),
                 "links": " / ".join(links) if links else "-",
+                "summary_link": f"[{experiment_name} / {pipeline_version}]({run_dir.relative_to(output_root).as_posix()}/)",
             }
         )
 
@@ -158,8 +159,8 @@ def _build_benchmark_run_index(output_root: Path) -> str:
                 "## Quick Summary",
                 "",
                 f"- Experiments indexed: {len(run_summaries)}",
-                f"- Newest generated run: {newest_run['experiment_name']} / {newest_run['pipeline_version']} at {newest_run['generated_at']} (`{newest_run['run_id']}`)",
-                f"- Best latest F1: {best_f1_run['experiment_name']} / {best_f1_run['pipeline_version']} with {best_f1_run['f1']:.2%} (`{best_f1_run['run_id']}`)",
+                f"- Newest generated run: {newest_run['summary_link']} at {newest_run['generated_at']} (`{newest_run['run_id']}`) with {newest_run['links']}",
+                f"- Best latest F1: {best_f1_run['summary_link']} with {best_f1_run['f1']:.2%} (`{best_f1_run['run_id']}`) and {best_f1_run['links']}",
                 "",
             ]
         )

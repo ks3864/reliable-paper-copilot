@@ -191,6 +191,10 @@
 - [x] Add a compact quick-summary block to the benchmark run index so the newest run and best latest F1 are visible before opening individual artifacts
   - [x] Sub-task 1: surface indexed experiment count plus newest-run and best-latest-F1 summary lines at the top of `benchmark_run_index.md`
 
+## Phase 30 — Benchmark Index Quick Summary Links
+- [x] Add direct artifact links to the benchmark run index quick-summary recap lines
+  - [x] Sub-task 1: link the newest-run and best-latest-F1 recap entries directly to the latest run directory and artifact set
+
 ## Current priority order
 1. No open items queued. Pick the next smallest portfolio-visible polish task when work resumes.
 
